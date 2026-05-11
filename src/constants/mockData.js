@@ -48,7 +48,7 @@ export const mockEsami = [
     data: '2026-06-15',
     tipologia: 'Progetto', // Esempi: 'Scritto', 'Orale', 'Progetto'
     priorita: 'Alta',
-    stato: 'programmato', // Esempi: 'programmato', 'superato', 'annullato'
+    stato: 'programmato', // Esempi: 'programmato', 'superato', 'annullato', 'non superato'
     note: 'Inviare il codice sorgente su GitHub prima dell\'esame.',
     voto_risultato: null,
   },
@@ -65,11 +65,32 @@ export const mockEsami = [
   }
 ];
 
-// 3. LISTA DELLE ATTIVITÀ E DEGLI OBIETTIVI DI STUDIO
+// 3.1 LISTA DELLE SESSIONI DI STUDIO (I "Contenitori di tempo")
+export const mockSessioni = [
+  {
+    id: 's1',
+    titolo: 'Mattinata in Biblioteca',
+    data: '2026-05-12', // Associata a un giorno specifico come chiede la traccia
+    ora_inizio: '09:00',
+    ora_fine: '13:00',
+    note: 'Studiare con il gruppo di progetto'
+  },
+  {
+    id: 's2',
+    titolo: 'Ripasso Serale pre-esame',
+    data: '2026-05-14',
+    ora_inizio: '21:00',
+    ora_fine: '23:30',
+    note: 'Focus totale, telefono spento'
+  }
+];
+
+// 3.2 LISTA DELLE ATTIVITÀ E DEGLI OBIETTIVI DI STUDIO
 export const mockAttivita = [
   {
     id: 'a1',
     corso_id: 'c1',
+    sessione_id: 's1',      // Collegato alla sessione "Mattinata in Biblioteca"
     titolo: 'Test classificazione',
     descrizione: 'Completare l\'esercizio sul dataset Breast Cancer.',
     data_scadenza: '2026-05-15',
@@ -82,6 +103,7 @@ export const mockAttivita = [
   {
     id: 'a2',
     corso_id: 'c2', // Collegato al corso Java
+    sessione_id: null,      // Questa attività non è associata a una sessione specifica (possibilità)
     titolo: 'Revisione codice di gruppo',
     descrizione: 'Sistemare il branch GitHub e controllare il file PartitaDao.',
     data_scadenza: '2026-05-08',
@@ -90,5 +112,19 @@ export const mockAttivita = [
     tempo_stimato_minuti: 60,
     tempo_impiegato_minuti: 60,
     note: 'Ignorare la classe di test per il momento.',
+  },
+
+  {
+    id: 'a3',
+    corso_id: 'c1',
+    sessione_id: 's1', //  Un'altra attività per la stessa sessione in biblioteca
+    titolo: 'Lettura Capitolo 4',
+    descrizione: 'Leggere le pagine da 150 a 180',
+    data_scadenza: '2026-05-12',
+    priorita: 'Bassa',
+    completata: false,
+    tempo_stimato_minuti: 60,
+    tempo_impiegato_minuti: 0,
+    note: '',
   }
 ];
