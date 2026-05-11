@@ -4,6 +4,7 @@
 
 // 1. LISTA DEI CORSI
 export const mockCorsi = [
+  
   {
     id: 'c1', // L'ID univoco (utile per collegare esami e attività al corso)
     nome: 'Machine Learning',
