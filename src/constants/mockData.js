@@ -10,6 +10,7 @@ export const mockCorsi = [
     nome: 'ML',
     docente: 'Prof. Rossi',
     semestre: 'Secondo Semestre', //valutare se aggiungere un campo per l'anno accademico
+    anno_accademico: '2025/2026', 
     cfu: 9,
     descrizione: 'Analisi di dataset e modelli di classificazione in Python.',
     stato: 'in corso', // Valori possibili: 'da iniziare', 'in corso', 'completato'
@@ -49,7 +50,7 @@ export const mockEsami = [
     data: '2026-06-15',
     tipologia: 'Progetto', // Esempi: 'Scritto', 'Orale', 'Progetto'
     priorita: 'Alta',
-    stato: 'programmato', // Esempi: 'programmato', 'superato', 'annullato', 'non superato'
+    stato: 'programmato', // Esempi: 'programmato', 'acettato', 'annullato', 'non accettato', 'non superato'
     note: 'Inviare il codice sorgente su GitHub prima dell\'esame.',
     voto_risultato: null,
   },
@@ -72,16 +73,16 @@ export const mockSessioni = [
     id: 's1',
     titolo: 'Mattinata in Biblioteca',
     data: '2026-05-12', // Associata a un giorno specifico come chiede la traccia
-    ora_inizio: '09:00',
-    ora_fine: '13:00',
+    data_ora_inizio: '2026-05-12T09:00:00', // Data e ora di inizio in formato ISO
+    data_ora_fine: '2026-05-12T13:00:00', // Data e ora di fine in formato ISO
     note: 'Studiare con il gruppo di progetto'
   },
   {
     id: 's2',
     titolo: 'Ripasso Serale pre-esame',
     data: '2026-05-14',
-    ora_inizio: '21:00',
-    ora_fine: '23:30',
+    data_ora_inizio: '2026-05-14T21:00:00',
+    data_ora_fine: '2026-05-14T23:30:00',
     note: 'Focus totale, telefono spento'
   }
 ];
@@ -94,7 +95,8 @@ export const mockAttivita = [
     sessione_id: 's1',      // Collegato alla sessione "Mattinata in Biblioteca"
     titolo: 'Test classificazione',
     descrizione: 'Completare l\'esercizio sul dataset Breast Cancer.',
-    data_scadenza: '2026-05-15',
+    data_ora_inizio: '2026-05-12T10:00:00', // Inizio con data e ora in formato ISO
+    data_ora_scadenza: '2026-05-15T00:00:00', // Scadenza con data e ora in formato ISO
     priorita: 'Alta',
     completata: false,
     tempo_stimato_minuti: 120,
@@ -107,7 +109,8 @@ export const mockAttivita = [
     sessione_id: null,      // Questa attività non è associata a una sessione specifica (possibilità)
     titolo: 'Revisione codice di gruppo',
     descrizione: 'Sistemare il branch GitHub e controllare il file PartitaDao.',
-    data_scadenza: '2026-05-08',
+    data_ora_inizio: '2026-05-08T14:00:00', // Inizio con data e ora in formato ISO
+    data_ora_scadenza: '2026-05-08T00:00:00', // Scadenza con data e ora in formato ISO
     priorita: 'Media',
     completata: true,
     tempo_stimato_minuti: 60,
@@ -121,7 +124,8 @@ export const mockAttivita = [
     sessione_id: 's1', //  Un'altra attività per la stessa sessione in biblioteca
     titolo: 'Lettura Capitolo 4',
     descrizione: 'Leggere le pagine da 150 a 180',
-    data_scadenza: '2026-05-12',
+    data_ora_inizio: '2026-05-12T00:00:00',
+    data_ora_scadenza: '2026-05-12T00:00:00',
     priorita: 'Bassa',
     completata: false,
     tempo_stimato_minuti: 60,
