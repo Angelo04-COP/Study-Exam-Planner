@@ -50,7 +50,7 @@ export const mockEsami = [
     data: '2026-06-15',
     tipologia: 'Progetto', // Esempi: 'Scritto', 'Orale', 'Progetto'
     priorita: 'Alta',
-    stato: 'programmato', // Esempi: 'programmato', 'acettato', 'annullato', 'non accettato', 'non superato'
+    stato: 'programmato', // Esempi: 'programmato', 'superato', 'non superato'
     note: 'Inviare il codice sorgente su GitHub prima dell\'esame.',
     voto_risultato: null,
   },
@@ -132,4 +132,15 @@ export const mockAttivita = [
     tempo_impiegato_minuti: 0,
     note: '',
   }
+];
+
+// 4. LISTA DEI RISULTATI DI STUDIO 
+export const mockTempiStudio = [
+  // Formato: data (YYYY-MM-DD), ore_studiate
+  { id: '1', data: '2026-05-11', ore_studiate: 3 }, // Lunedì
+  { id: '2', data: '2026-05-12', ore_studiate: 2.5 }, // Martedì
+  { id: '3', data: '2026-05-12', ore_studiate: 1.5 }, // Martedì (seconda sessione)
+  { id: '4', data: '2026-05-13', ore_studiate: 4 }, // Mercoledì
+  { id: '5', data: '2026-05-14', ore_studiate: 2 }, // Giovedì
+  { id: '6', data: '2026-05-17', ore_studiate: 1 }, // Domenica
 ];
