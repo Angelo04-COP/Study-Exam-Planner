@@ -3,33 +3,93 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BarChart, PieChart } from 'react-native-gifted-charts';
 
 // ----------------- DATI FITTIZI (Mock Data) -----------------
-// 1. Ore di studio settimanali (Grafico a Barre)
-const barData = [
-  { value: 11, label: 'Mo', frontColor: '#177AD5' },
-  { value: 7, label: 'Tu', frontColor: '#177AD5' },
-  { value: 14, label: 'We', frontColor: '#177AD5' },
-  { value: 11, label: 'Th', frontColor: '#177AD5' },
-  { value: 9, label: 'Fr', frontColor: '#177AD5' },
-  { value: 13, label: 'Sa', frontColor: '#177AD5' },
-  { value: 4, label: 'Su', frontColor: '#8EBBF3' },
-];
 
-// 2. Progresso Esami (Grafico a Torta)
-const pieData = [
-  { value: 50, color: '#177AD5' }, // Superati
-  { value: 30, color: '#8EBBF3' }, // Da Sostenere
-  { value: 20, color: '#E2E2E2' }, // Da Iniziare
-];
+import { mockAttivita, mockCorsi, mockEsami } from '../constants/mockData';
 
-// 3. Recenti Attività (Lista in basso)
-const mockAttivita = [
-  { id: '1', titolo: 'Ripasso Algoritmi', corso: 'Algoritmi II', completata: false },
-  { id: '2', titolo: 'Esercizi Java', corso: 'Programmazione I', completata: false },
-  { id: '3', titolo: 'Preparazione Esame', corso: 'Sistemi Operativi', completata: false },
-];
+export default function DashboardScreen() {
+
+//--------Calcoli Dinamici dei Dati per i Grafici---------
+//[1] MEDIA  PONDERATA:
+//1.1 Calcolo CFU Guadagnati
+const corsiCompletati = mockCorsi.filter(corso => corso.stato === 'completato');
+const cfuGuadagnati = corsiCompletati.reduce((tot, corso) => tot + corso.cfu, 0);
+
+//1.2 Calcolo CFU totali del piano di studi
+const cfuTotali = mockCorsi.reduce((tot, corso) => tot + corso.cfu, 0);
+
+//1.3 Calcolo Media Ponderata
+const sommaPonerata = corsiCompletati.reduce((tot, corso) => tot + (corso.voto_ottenuto * corso.cfu), 0);
+const mediaAttuale = cfuGuadagnati > 0 ? (sommaPonerata / cfuGuadagnati).toFixed(2) : 0.00;
+
+//[2] PROSSIME SCADENZE:
+//2.1 Calcolo prossime Scadenze (numero diattività non completate)
+const prossimeScadenze = mockAttivita.filter(attivita => !attivita.completata).length;
+
+//2.2 Logica per prendere le  attività più vicine alla data odierna (ordinando per data)
+const oggi = new Date().toISOString().split('T')[0]; // Otteniamo la data odierna in formato 'YYYY-MM-DD'
+const attivitaProcessate = mockAttivita
+  .map(attivita => {
+    const corso = mockCorsi.find(c => c.id === attivita.corso_id);
+
+    //Selezione stato e colore
+    let stato = 'da iniziare';
+    let colore = '#8EBBF3';
+    let prioritaOrdine = 2;
+    
+    if (attivita.completata) {
+      stato = 'completata';
+      colore = '#4CAF50'; // Verde
+      prioritaOrdine = 3;
+    } else if(attivita.data_ora_scadenza < oggi) {
+      stato = 'scaduta';
+      colore = '#FF5252';
+      prioritaOrdine = 1;
+    }
+
+    return{
+      ...attivita,
+      nome_corso: corso ? corso.nome : 'Corso Sconosciuto',
+      statoLabel: stato,
+      statoColore: colore,
+      prioritaOrdine: prioritaOrdine,
+    };
+  })
+  .sort((a, b) => {
+    // Ordina prima per priorità (scadute, da iniziare, completate) e poi per data
+    if (a.prioritaOrdine !== b.prioritaOrdine) {
+      return a.prioritaOrdine - b.prioritaOrdine; // Ordina per priorità
+    }
+    return new Date(a.data_ora_scadenza) - new Date(b.data_ora_scadenza); // Se stessa priorità, ordina per data
+  })
+  .slice(0, 8); // Prendi solo le prime 8 attività più vicine
+  
+
+//[3] PROGRESSO ESAMI:
+//3.1 Calcolo percentuale esami superati (grafico a torta)
+const esamiSuperati = mockEsami.filter(esame => esame.stato === 'superato').length;
+const esamiProgrammati = mockEsami.filter(esame => esame.stato === 'programmato').length;
+const esamiDaInziare = mockCorsi.length - (esamiSuperati + esamiProgrammati); // Consideriamo "da iniziare" come quelli dei corsi che non hanno ancora un esame in programma
+// ==========================================
+  // 📊 DATI PER I GRAFICI (Ancora statici per ora)
+  // ==========================================
+  const barData = [
+    { value: 11, label: 'Mo', frontColor: '#177AD5' },
+    { value: 7, label: 'Tu', frontColor: '#177AD5' },
+    { value: 14, label: 'We', frontColor: '#177AD5' },
+    { value: 11, label: 'Th', frontColor: '#177AD5' },
+    { value: 9, label: 'Fr', frontColor: '#177AD5' },
+    { value: 13, label: 'Sa', frontColor: '#177AD5' },
+    { value: 4, label: 'Su', frontColor: '#8EBBF3' },
+  ];
+
+  //dinamico
+  const pieData = [
+    { value: esamiSuperati, color: '#177AD5',text:'Superati' },
+    { value: esamiProgrammati, color: '#8EBBF3',text:'Programmati' },
+    { value: esamiDaInziare, color: '#E2E2E2',text:'Da Iniziare' },
+  ];
 
 // ----------------- COMPONENTE SCHERMATA -----------------
-export default function DashboardScreen() {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.headerTitle}>CRUSCOTTO</Text>
@@ -71,19 +131,19 @@ export default function DashboardScreen() {
                 />
             </View>
             
-            {/* LEGENDA (Ora sotto il grafico) */}
+            {/* LEGENDA (sotto il grafico) */}
             <View style={styles.legendContainer}>
               <View style={styles.legendItem}>
                 <Text style={styles.dotSuperati}>●</Text>
-                <Text style={styles.legendText}>Superati</Text>
+                <Text style={styles.legendText}>Superati ({esamiSuperati})</Text>
               </View>
               <View style={styles.legendItem}>
                 <Text style={styles.dotDaSostenere}>●</Text>
-                <Text style={styles.legendText}>Da Sostenere</Text>
+                <Text style={styles.legendText}>Da Sostenere ({esamiProgrammati})</Text>
               </View>
               <View style={styles.legendItem}>
                 <Text style={styles.dotDaIniziare}>●</Text>
-                <Text style={styles.legendText}>Da Iniziare</Text>
+                <Text style={styles.legendText}>Da Iniziare ({esamiDaInziare})</Text>
               </View>
             </View>
           </View>
@@ -92,38 +152,59 @@ export default function DashboardScreen() {
         {/* Card Destra: Statistiche Testuali */}
         <View style={[styles.card, styles.halfCard]}>
           <Text style={styles.cardTitle}>CFU GUADAGNATI:</Text>
-          <Text style={styles.statValue}>48 / 180</Text>
+          <Text style={styles.statValue}>{cfuGuadagnati} / {cfuTotali}</Text>
           
           <View style={styles.divider} />
           
-          <Text style={styles.cardTitle}>MEDIA ATTUALE:</Text>
-          <Text style={styles.statValue}>28.5</Text>
+          <Text style={styles.cardTitle}>MEDIA PONDERATA:</Text>
+          <Text style={styles.statValue}>{mediaAttuale}</Text>
           
           <View style={styles.divider} />
           
-          <Text style={styles.cardTitle}>PROSSIME SCADENZE:</Text>
-          <Text style={styles.statValue}>3</Text>
+          <Text style={styles.cardTitle}>ATTIVITA DA FARE:</Text>
+          <Text style={styles.statValue}>{prossimeScadenze}</Text>
         </View>
 
       </View>
 
       {/* ----------- SEZIONE 3: RECENTI ATTIVITÀ ----------- */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>RECENTI ATTIVITÀ</Text>
+        <Text style={styles.cardTitle}>RIEPILOGO ATTIVITÀ</Text>
         
         {/* Usiamo un loop sulle mockAttivita per creare gli item */}
-        {mockAttivita.map((attivita) => (
+        {attivitaProcessate.map((attivita) => (
           <View key={attivita.id} style={styles.attivitaItem}>
             {/* L'indicatore visuale a punto */}
-            <View style={styles.dotAttivita} />
+            <View style={[styles.dotAttivita, { backgroundColor: attivita.statoColore }]} />
+
             <View style={styles.attivitaTextContainer}>
-              <Text style={styles.attivitaTitolo}>{attivita.titolo}</Text>
-              <Text style={styles.attivitaCorso}>Corso: {attivita.corso}</Text>
+              <Text style={[
+                styles.attivitaTitolo,
+                attivita.statoLabel === 'completata' && { textDecorationLine: 'line-through', color: '#94a3b8' }
+              ]}>
+                {attivita.titolo}
+              </Text>
+
+              <Text style={[
+                styles.attivitaCorso,
+                attivita.statoLabel === 'scaduta' && { color: '#FF5252', fontWeight: 'bold' }
+              ]}>
+                {attivita.nome_corso} • 
+                {attivita.statoLabel === 'scaduta' ? ' SCADUTA: ' : ' Scadenza: '} 
+                {attivita.data_ora_scadenza}
+              </Text>
             </View>
             {/* L'icona a freccia per accedere ai dettagli */}
             <Text style={styles.arrowIcon}>›</Text>
           </View>
         ))}
+
+        {/* Messaggio se non ci sono attività */}
+        {attivitaProcessate.length === 0 && (
+          <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 10 }}>
+            Nessuna attività in scadenza. Ottimo lavoro!
+          </Text>
+        )}
       </View>
 
       {/* Margine inferiore extra per ScrollView */}
