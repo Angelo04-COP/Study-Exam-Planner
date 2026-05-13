@@ -121,7 +121,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses}: AddTaskModalP
                 </View>
                 
                 {/*Input per le note aggiuntive*/}
-                <TextInput placeholder="{Note aggiuntive" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} />
+                <TextInput placeholder="Note aggiuntive" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} />
 
                 {/*Corso associato*/}
                 <Text style = {styles.label}>CORSO ASSOCIATO</Text>
