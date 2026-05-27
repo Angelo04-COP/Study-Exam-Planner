@@ -4,7 +4,7 @@ import { BarChart, PieChart } from 'react-native-gifted-charts';
 
 // ----------------- DATI FITTIZI (Mock Data) -----------------
 
-import { mockAttivita, mockCorsi, mockEsami } from '../constants/mockData';
+import { mockAttivita, mockCorsi, mockEsami, mockTempiStudio } from '../constants/mockData';
 
 export default function DashboardScreen() {
 
@@ -69,25 +69,67 @@ const attivitaProcessate = mockAttivita
 const esamiSuperati = mockEsami.filter(esame => esame.stato === 'superato').length;
 const esamiProgrammati = mockEsami.filter(esame => esame.stato === 'programmato').length;
 const esamiDaInziare = mockCorsi.length - (esamiSuperati + esamiProgrammati); // Consideriamo "da iniziare" come quelli dei corsi che non hanno ancora un esame in programma
-// ==========================================
-  // 📊 DATI PER I GRAFICI (Ancora statici per ora)
-  // ==========================================
-  const barData = [
-    { value: 11, label: 'Mo', frontColor: '#177AD5' },
-    { value: 7, label: 'Tu', frontColor: '#177AD5' },
-    { value: 14, label: 'We', frontColor: '#177AD5' },
-    { value: 11, label: 'Th', frontColor: '#177AD5' },
-    { value: 9, label: 'Fr', frontColor: '#177AD5' },
-    { value: 13, label: 'Sa', frontColor: '#177AD5' },
-    { value: 4, label: 'Su', frontColor: '#8EBBF3' },
-  ];
 
-  //dinamico
-  const pieData = [
-    { value: esamiSuperati, color: '#177AD5',text:'Superati' },
-    { value: esamiProgrammati, color: '#8EBBF3',text:'Programmati' },
-    { value: esamiDaInziare, color: '#E2E2E2',text:'Da Iniziare' },
-  ];
+//3.2 Conversione in formato adatto per il grafico a torta
+const pieData = [
+  { value: esamiSuperati, color: '#177AD5',text:'Superati' },
+  { value: esamiProgrammati, color: '#8EBBF3',text:'Programmati' },
+  { value: esamiDaInziare, color: '#E2E2E2',text:'Da Iniziare' },
+];
+
+
+//[4] LOGICA PER IL GRAFICO A BARRE (ore di studio settimanali):
+  
+  // 4.1 Inizializziamo gli array per i 7 giorni (Lunedì = 0 ... Domenica = 6)
+  const orePianificate = [0, 0, 0, 0, 0, 0, 0];
+  const oreEffettive = [0, 0, 0, 0, 0, 0, 0];
+  const etichetteGiorni = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
+  // 4.2 Calcoliamo il TEMPO PIANIFICATO dalle Attività (convertendo i minuti in ore)
+  mockAttivita.forEach(attivita => {
+    if (attivita.data_ora_inizio && attivita.tempo_stimato_minuti) {
+      const dataInizio = new Date(attivita.data_ora_inizio);
+      
+      // Trasformiamo l'indice del giorno (Domenica=0) nel nostro formato (Lunedì=0)
+      const giornoIndice = (dataInizio.getDay() + 6) % 7; 
+      
+      // Aggiungiamo le ore stimate per quel giorno
+      orePianificate[giornoIndice] += (attivita.tempo_stimato_minuti / 60);
+    }
+  });
+
+  // 4.3 Calcoliamo il TEMPO EFFETTIVO dai log del Timer
+  mockTempiStudio.forEach(logTimer => {
+    if (logTimer.data && logTimer.ore_studiate) {
+      const dataLog = new Date(logTimer.data);
+      const giornoIndice = (dataLog.getDay() + 6) % 7;
+      
+      oreEffettive[giornoIndice] += logTimer.ore_studiate;
+    }
+  });
+
+  // 4.4 Creiamo la struttura a "Barre Sovrapposte" per il grafico
+  const stackData = etichetteGiorni.map((label, index) => {
+    const effettive = oreEffettive[index];
+    const pianificate = orePianificate[index];
+    
+    // Calcoliamo se c'è un "gap" tra quanto studiato e quanto programmato
+    // Se abbiamo studiato di più del programmato, il rimanente è 0.
+    const rimanente = effettive < pianificate ? (pianificate - effettive) : 0;
+
+    return {
+      label: label,
+      stacks: [
+        { value: effettive, color: '#177AD5' }, // Base blu scuro: tempo reale
+        { value: rimanente, color: '#A7D7F9' }, // Cima azzurra: gap mancante all'obiettivo
+      ],
+    };
+  });
+
+  // Calcoliamo il tetto massimo dinamico dell'asse Y (il valore più alto tra pianificato ed effettivo + margine)
+  const maxAssoluto = Math.max(...orePianificate, ...oreEffettive);
+  const maxOreGrafico = maxAssoluto > 0 ? Math.ceil(maxAssoluto) + 1 : 8;
+
 
 // ----------------- COMPONENTE SCHERMATA -----------------
   return (
@@ -96,19 +138,37 @@ const esamiDaInziare = mockCorsi.length - (esamiSuperati + esamiProgrammati); //
 
       {/* ----------- SEZIONE 1: ORE STUDIO ----------- */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>STUDIO ORE SETTIMANALI</Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>STUDIO ORE SETTIMANALI</Text>
+          
+          <View style={styles.chartLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#177AD5' }]} />
+              <Text style={styles.legendLabel}>Effettivo</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#A7D7F9' }]} />
+              <Text style={styles.legendLabel}>Pianificato</Text>
+            </View>
+          </View>
+        </View>
+
         <BarChart
-          data={barData}
+          stackData={stackData}
           barWidth={22}
           initialSpacing={10}
           spacing={14}
           barBorderRadius={4}
-          hideRules
+          showVerticalLines={false}
+          rulesType="solid"
+          rulesColor="#EEEEEE"
+          dashWidth={0}
           xAxisThickness={0}
           yAxisThickness={0}
-          yAxisTextStyle={{ color: '#666', fontSize: 11 }}
-          noOfSections={4}
-          maxValue={16}
+          yAxisTextStyle={{ color: '#94a3b8', fontSize: 11 }}
+          noOfSections={maxOreGrafico}
+          maxValue={maxOreGrafico}
+          stepValue={1}
         />
       </View>
 
@@ -360,5 +420,32 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: '#CCC',
     fontWeight: 'bold',
+  },
+  
+  // Stili per la card del grafico a barre (separazione titolo e legenda)
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 15,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 5,
+  },
+  legendLabel: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '600',
   },
 });
