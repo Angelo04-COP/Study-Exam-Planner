@@ -1,12 +1,16 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BarChart, PieChart } from 'react-native-gifted-charts';
+import React, {useState} from 'react';
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import { BarChart, PieChart, LineChart } from 'react-native-gifted-charts';
 
 // ----------------- DATI FITTIZI (Mock Data) -----------------
 
 import { mockAttivita, mockCorsi, mockEsami, mockTempiStudio } from '../constants/mockData';
+import { parse } from 'react-native-svg';
 
 export default function DashboardScreen() {
+
+//STATO PER IL TOGLEL DELLA VISTA (es. tra Grafico a Barre e Lineare)
+const [mostraVoti, setMostraVoti] = useState(false); // false = Grafico a Barre (ore di studio), true = Grafico Lineare (voti esami)
 
 //--------Calcoli Dinamici dei Dati per i Grafici---------
 //[1] MEDIA  PONDERATA:
@@ -125,11 +129,36 @@ const pieData = [
       ],
     };
   });
-
   // Calcoliamo il tetto massimo dinamico dell'asse Y (il valore più alto tra pianificato ed effettivo + margine)
   const maxAssoluto = Math.max(...orePianificate, ...oreEffettive);
   const maxOreGrafico = maxAssoluto > 0 ? Math.ceil(maxAssoluto) + 1 : 8;
 
+  //[5] LOGICA PER GRAFICO A LINEE (voti esami nel tempo):
+  const esamiSuperatiOrdinati = [...mockEsami]
+    .filter(esame => esame.stato === 'superato' && esame.voto_risultato)
+    .sort((a, b) => new Date(a.data) - new Date(b.data)); // Ordina per data
+
+    let sommaVoti = 0;
+    let sommaPonderata = 0;
+    let totalCfu = 0;
+
+    const dataMediaPonderata = esamiSuperatiOrdinati.map((esame, index) => {
+      const corso = mockCorsi.find(c => c.id === esame.corso_id);
+      sommaPonderata += (esame.voto_risultato * (corso ? corso.cfu : 0));
+      totalCfu += (corso ? corso.cfu : 0);
+      return {
+        value: parseFloat((sommaPonderata / totalCfu).toFixed(2)), 
+        label: esame.data.split('-')[2] + '/' + esame.data.split('-')[1] 
+      }; // Etichetta "MM/DD"
+    });
+
+    const dataMediaAritmetica = esamiSuperatiOrdinati.map((esame, index) => {
+      sommaVoti += esame.voto_risultato;
+      return {
+        value: parseFloat((sommaVoti / (index + 1)).toFixed(2)),
+        hideDataPoint: false // Mostra il punto dati per ogni esame superato
+      };
+    });
 
 // ----------------- COMPONENTE SCHERMATA -----------------
   return (
@@ -139,37 +168,81 @@ const pieData = [
       {/* ----------- SEZIONE 1: ORE STUDIO ----------- */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>STUDIO ORE SETTIMANALI</Text>
-          
-          <View style={styles.chartLegend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#177AD5' }]} />
-              <Text style={styles.legendLabel}>Effettivo</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#A7D7F9' }]} />
-              <Text style={styles.legendLabel}>Pianificato</Text>
-            </View>
-          </View>
+          <Text style={styles.cardTitle}>{mostraVoti ? 'ANDAMENTO VOTI' : 'STUDIO ORE SETTIMANALI'}</Text>
+
+          {/* Pulsante per togglare la vista tra Grafico a Barre e Lineare */}
+          <TouchableOpacity 
+            style={styles.switchContainer} 
+            onPress={() => setMostraVoti(!mostraVoti)}
+            activeOpacity={0.9}
+          >
+            {/* Testo Opzione Sinistra */}
+            <Text style={[styles.switchText, !mostraVoti && styles.switchTextActive]}>
+              Tempo
+            </Text>
+            
+            {/* Testo Opzione Destra */}
+            <Text style={[styles.switchText, mostraVoti && styles.switchTextActive]}>
+              Media
+            </Text>
+            
+            {/* Il cursore grigio scuro che si sposta a destra o a sinistra */}
+            <View style={[
+              styles.switchBall, 
+              mostraVoti ? styles.switchBallRight : styles.switchBallLeft
+            ]} />
+          </TouchableOpacity>
         </View>
 
-        <BarChart
-          stackData={stackData}
-          barWidth={22}
-          initialSpacing={10}
-          spacing={14}
-          barBorderRadius={4}
-          showVerticalLines={false}
-          rulesType="solid"
-          rulesColor="#EEEEEE"
-          dashWidth={0}
-          xAxisThickness={0}
-          yAxisThickness={0}
-          yAxisTextStyle={{ color: '#94a3b8', fontSize: 11 }}
-          noOfSections={maxOreGrafico}
-          maxValue={maxOreGrafico}
-          stepValue={1}
-        />
+        {/* RENDERING CONDIZIONALE DEL GRAFICO */}
+        {!mostraVoti ? (
+          <View>
+            <View style={styles.chartLegend}>
+              <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#177AD5' }]} /><Text style={styles.legendLabel}>Effettivo</Text></View>
+              <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#A7D7F9' }]} /><Text style={styles.legendLabel}>Pianificato</Text></View>
+            </View>
+            <BarChart
+              stackData={stackData}
+              barWidth={22}
+              initialSpacing={10}
+              spacing={14}
+              barBorderRadius={4}
+              noOfSections={maxOreGrafico}
+              maxValue={maxOreGrafico}
+              stepValue={1}
+              yAxisTextStyle={{ color: '#94a3b8', fontSize: 11 }}
+              rulesColor="#EEEEEE"
+              showVerticalLines={false}
+              rulesType="solid"
+              dashWidth={0}
+              xAxisThickness={0}
+              yAxisThickness={0}
+            />
+          </View>
+        ) : (
+          <View>
+            <View style={styles.chartLegend}>
+              <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#177AD5' }]} /><Text style={styles.legendLabel}>Ponderata</Text></View>
+              <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#94a3b8', borderRadius: 0 }]} /><Text style={styles.legendLabel}>Aritmetica</Text></View>
+            </View>
+            <LineChart
+              data={dataMediaPonderata}
+              data2={dataMediaAritmetica}
+              color1="#177AD5"
+              color2="#94a3b8"
+              thickness={3}
+              dataPointsColor1="#177AD5"
+              dashGapArray={[5, 5]}
+              noOfSections={5}
+              maxValue={30}
+              minValue={18}
+              yAxisTextStyle={{ color: '#94a3b8', fontSize: 11 }}
+              rulesColor="#EEEEEE"
+              xAxisThickness={0}
+              yAxisThickness={0}
+            />
+          </View>
+        )}
       </View>
 
       {/* ----------- SEZIONE 2: RIGA CENTRALE ----------- */}
@@ -318,6 +391,57 @@ const styles = StyleSheet.create({
 
   halfCard: {
     width: '48%',
+  },
+
+  // Stili per il toggle di selezione tra Grafico a Barre e Lineare
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  // Il binario esterno della pillola
+  switchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#E2E8F0', // Grigio chiaro di sfondo
+    borderRadius: 20,
+    width: 140,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    position: 'relative',
+    paddingHorizontal: 14,
+  },
+  // Stile base dei testi interni
+  switchText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B', // Grigio intermedio quando non attivo
+    zIndex: 2, // Importante: mantiene il testo SOPRA il cursore mobile
+  },
+  // Colore del testo quando il cursore ci si posiziona sopra
+  switchTextActive: {
+    color: 'white', 
+  },
+  // Il cursore mobile (pallino/capsula)
+  switchBall: {
+    position: 'absolute',
+    height: 30,
+    width: 66, // Larghezza calcolata per coprire perfettamente una singola opzione
+    borderRadius: 15,
+    backgroundColor: '#475569', // Grigio scuro ardesia coerente con la palette minimale
+    zIndex: 1, // Sta sotto al testo ma sopra lo sfondo grigio chiaro
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  switchBallLeft: {
+    left: 3,
+  },
+  switchBallRight: {
+    right: 3,
   },
 
   // -- Stili CORRETTI per PieChart e Legenda --
