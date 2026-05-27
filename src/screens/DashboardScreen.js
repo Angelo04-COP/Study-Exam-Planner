@@ -160,6 +160,57 @@ const pieData = [
       };
     });
 
+
+// --- [D] INSIGHTS CORSI (Requisiti Traccia) ---
+  
+  // 1. Avanzamento temporale dei corsi (Giorni passati vs Giorni totali)
+  const oggiCorrente = new Date(); 
+
+  const progressGiorniCorsi = mockCorsi
+    .filter(corso => corso.data_inizio && corso.data_fine && corso.stato === 'in corso') // Filtriamo solo i corsi attivi
+    .map(corso => {
+      const inizio = new Date(corso.data_inizio);
+      const fine = new Date(corso.data_fine);
+      
+      // Calcoliamo la differenza in millisecondi e la convertiamo in giorni
+      const millisecondiInGiorno = 1000 * 60 * 60 * 24;
+      const giorniTotali = Math.max(1, Math.round((fine - inizio) / millisecondiInGiorno));
+      const giorniPassati = Math.round((oggiCorrente - inizio) / millisecondiInGiorno);
+      
+      // Blocchiamo i valori tra 0 e il totale (nel caso la data odierna sia fuori dal range)
+      const giorniEffettivi = Math.max(0, Math.min(giorniPassati, giorniTotali));
+      const percentuale = (giorniEffettivi / giorniTotali) * 100;
+
+      return {
+        id: corso.id,
+        nome: corso.nome,
+        giorniPassati: giorniEffettivi,
+        giorniTotali: giorniTotali,
+        percentuale: percentuale
+      };
+    })
+    .sort((a, b) => b.percentuale - a.percentuale); // Mostra in alto i corsi più vicini alla fine
+
+  // 2. Classifica dei corsi con più attività aperte (non completate)
+  const attivitaApertePerCorso = {};
+  mockAttivita.forEach(att => {
+    if (!att.completata) {
+      attivitaApertePerCorso[att.corso_id] = (attivitaApertePerCorso[att.corso_id] || 0) + 1;
+    }
+  });
+
+  const classificaCorsiAperti = Object.keys(attivitaApertePerCorso)
+    .map(corsoId => {
+      const corso = mockCorsi.find(c => c.id === corsoId);
+      return {
+        id: corsoId,
+        nome: corso ? corso.nome : 'Sconosciuto',
+        conteggio: attivitaApertePerCorso[corsoId]
+      };
+    })
+    .sort((a, b) => b.conteggio - a.conteggio) // Ordina dal più alto al più basso
+    .slice(0, 3); // Prende solo i primi 3 per non allungare la card
+
 // ----------------- COMPONENTE SCHERMATA -----------------
   return (
     <ScrollView style={styles.container}>
@@ -299,6 +350,73 @@ const pieData = [
         </View>
 
       </View>
+
+      {/* 1. Card Avanzamento Temporale Corsi (Barre Orizzontali) */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>TIMELINE CORSI ATTIVI</Text>
+        
+        <View style={{ marginTop: 10 }}>
+          {progressGiorniCorsi.length > 0 ? (
+            progressGiorniCorsi.map((item) => (
+              <View key={item.id} style={{ marginBottom: 16 }}>
+                
+                {/* Intestazione della barra: Nome Corso e Rapporto Giorni */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600' }} numberOfLines={1}>
+                    {item.nome}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '500' }}>
+                    {item.giorniPassati} / {item.giorniTotali} gg
+                  </Text>
+                </View>
+                
+                {/* Il binario grigio di sfondo */}
+                <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+                  {/* La barra blu che avanza con i giorni */}
+                  <View 
+                    style={{ 
+                      height: '100%', 
+                      width: `${item.percentuale}%`, 
+                      backgroundColor: item.percentuale > 90 ? '#FF5252' : '#177AD5', // Diventa rossa se manca pochissimo
+                      borderRadius: 4 
+                    }} 
+                  />
+                </View>
+                
+              </View>
+            ))
+          ) : (
+            <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', marginVertical: 10 }}>
+              Nessun corso attivo al momento.
+            </Text>
+          )}
+        </View>
+      </View>
+
+        {/* Card Destra: Attività Aperte */}
+        <View style={[styles.card, styles.halfCard]}>
+          <Text style={styles.cardTitle}>ATTIVITÀ APERTE</Text>
+          
+          <View style={{ marginTop: 10 }}>
+            {classificaCorsiAperti.length > 0 ? (
+              classificaCorsiAperti.map((item) => (
+                <View key={item.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#EEEEEE', paddingBottom: 8 }}>
+                  <Text style={{ fontSize: 12, color: '#475569', flex: 1, paddingRight: 5 }} numberOfLines={2}>
+                    {item.nome}
+                  </Text>
+                  {/* Il numerino rosso con le attività da fare */}
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FF5252' }}>
+                    {item.conteggio}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 10 }}>Nessuna attività aperta!</Text>
+            )}
+          </View>
+        </View>
+
+      
 
       {/* ----------- SEZIONE 3: RECENTI ATTIVITÀ ----------- */}
       <View style={styles.card}>

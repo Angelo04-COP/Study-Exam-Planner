@@ -16,6 +16,8 @@ export const mockCorsi = [
     stato: 'completato',
     voto_desiderato: 28,
     voto_ottenuto: 30,
+    data_inizio: '2025-10-01',
+    data_fine: '2026-01-15',
   },
   {
     id: 'c2',
@@ -28,6 +30,8 @@ export const mockCorsi = [
     stato: 'in corso',
     voto_desiderato: 28,
     voto_ottenuto: null,
+    data_inizio: '2026-03-01',
+    data_fine: '2026-06-15', // Corso di 106 giorni
   },
   {
     id: 'c3',
@@ -40,6 +44,8 @@ export const mockCorsi = [
     stato: 'in corso',
     voto_desiderato: 26,
     voto_ottenuto: null,
+    data_inizio: '2026-03-01',
+    data_fine: '2026-05-30', // Corso agli sgoccioli
   },
   {
     id: 'c4',
@@ -52,6 +58,8 @@ export const mockCorsi = [
     stato: 'completato',
     voto_desiderato: 25,
     voto_ottenuto: 27,
+    data_inizio: '2025-10-01',
+    data_fine: '2026-01-15',
   }
 ];
 
