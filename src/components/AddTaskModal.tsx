@@ -87,7 +87,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             if (corsoAssociato) {
                 setSelectedCourse(corsoAssociato.name);
             } else {
-                setSelectedCourse('');
+                setSelectedCourse('Nessuno');
 
             }
         } else {
@@ -96,11 +96,11 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             setDesc('');
             setType('attivita');
             setPriority('Media');
-            setSessionType('Studio');
+            setSessionType('Nessuna');
             setEstTime('');
             setActTime('');
             setNotes('');
-            setSelectedCourse('');
+            setSelectedCourse('Nessuno');
 
 
         }
@@ -147,6 +147,13 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
         <Modal isVisible={isVisible} style={styles.modalMargin} onBackdropPress={onClose}>
             {/*<View> principale del contenuto del Modal*/}
             <View style={styles.content}>
+                {/*PULSANTE DI CHIUSURA "X" IN ALTO A DESTRA
+                     Consente un'ancora visiva immediata ed esplicita per annullare l'operazione
+                        e chiudere il modale in qualsiasi momento*/}
+                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                    <Text style={styles.closeButtonText}>X</Text>        
+                </TouchableOpacity> 
+
                 {/*Il titolo superiore si adatta dinamicamente all'operazione in corso*/}
                 <Text style = {styles.header}>{taskToEdit ? "MODIFICA ATTIVITA' / SESSIONE" : "NUOVA ATTIVITA' / SESSIONE"}</Text>
                 <Text style = {styles.dateText}>Data: {date}</Text>
@@ -162,7 +169,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                         style={[styles.typeBtn, type === 'attivita' && styles.typeBtnActive]}
                         onPress = { () => setType('attivita')}>
                             <Text style={{color: type === 'attivita' ? 'white' : 'black', fontWeight: 'bold'}}>
-                                Attività/Obiettivo
+                                Attività
                             </Text>  
                     </TouchableOpacity>
                     <TouchableOpacity 
@@ -189,21 +196,39 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                     a una variabile di stato
 
                 */}
-                <TextInput placeholder = "Titolo" style={styles.input} onChangeText={setTitle} value={title} />
+                <TextInput placeholder = "Titolo" placeholderTextColor = "#7c7c80" style={styles.input} onChangeText={setTitle} value={title} />
 
                 {/*Input per la descrizione*/}
-                <TextInput placeholder="Descrizione breve" style={styles.input} onChangeText = {setDesc} value={desc} />
+                <TextInput placeholder="Descrizione breve" placeholderTextColor = "#7c7c80" style={styles.input} onChangeText = {setDesc} value={desc} />
 
                 {/*Input per tempo stimato ed effettivo dell'attività: i tempi stimati ed effettivi compaiono solo per
-                le attività*/}
+                le attività; in particolare: 
+                    - il tempo stimato compare sempre se il tipo è 'attività';
+                    - il tempo effettivo compare SOLO se il tipo è 'attività' E siamo in modalità modifica, poiché all'atto
+                        del primo inserimento il tempo reale non è ancora quantificabile*/}
                 {type === 'attivita' && (
                 <View style = {styles.row}>
-                    <TextInput placeholder="Tempo Stimato (h)" keyboardType="numeric" style={[styles.input, {flex: 1, marginRight: 5 }]} onChangeText={setEstTime} value={estTime}/>
-                    <TextInput placeholder="Tempo Effettivo (h)" keyboardType= "numeric" style={[styles.input, {flex: 1, marginRight: 5}]} onChangeText={setActTime} value={actTime} />
+                    <TextInput 
+                        placeholder="Tempo Stimato (h)" 
+                        placeholderTextColor = "#7c7c80"
+                        keyboardType="numeric" 
+                        style={[styles.input, {flex: 1, marginRight: 5 }]} 
+                        onChangeText={setEstTime} 
+                        value={estTime}/>
+
+                    {taskToEdit && (
+                        <TextInput 
+                            placeholder="Tempo Effettivo (h)" 
+                            placeholderTextColor = "#7c7c80"
+                            keyboardType= "numeric" 
+                            style={[styles.input, {flex: 1, marginRight: 5}]} 
+                            onChangeText={setActTime} 
+                            value={actTime} />
+                    )}
                 </View>
                 )}  
                 {/*Input per le note aggiuntive*/}
-                <TextInput placeholder="Note aggiuntive" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} value = {notes}/>
+                <TextInput placeholder="Note aggiuntive" placeholderTextColor = "#7c7c80" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} value = {notes}/>
 
                 {/*Corso associato*/}
                 <Text style = {styles.label}>CORSO ASSOCIATO (OPZIONALE)</Text>
@@ -225,6 +250,18 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                 */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                     
+                    {/*Opzione NESSUNO per attività/sessioni trasversali*/}
+                    <TouchableOpacity
+                        onPress={() => setSelectedCourse('Nessuno')}
+                        style={[styles.chip, selectedCourse === 'Nessuno' && styles.chipActive]}
+                        >
+                           <Text style={{ color: selectedCourse === 'Nessuno' ? 'white' : 'black' }}>
+                                Nessuno
+                            </Text>  
+
+                    </TouchableOpacity>
+
+                    {/*Renderizzazione dei corsi presenti nel sistema*/}
                     {courses.map((c) => (
                         //TouchableOpacity rende qualsiasi elemento dell'interfaccia "cliccabile" o "interattivo".
                         //E' un wrapper, in quanto serve a racchiudere altri componenti per intercettare i tocchi dell'utente
@@ -289,6 +326,23 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
 const styles = StyleSheet.create({
     modalMargin: { margin: 0},
     content: { backgroundColor: 'white', flex: 1, marginTop: 80, padding: 25, borderTopLeftRadius: 30, borderTopRightRadius: 30},
+    closeButton: {
+        position: 'absolute',
+        top: 15,
+        right: 15,
+        backgroundColor: '#f0f0f0', 
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10 //mantiene il pulsante al di sopra di altri testi o elementi dello sfondo
+    },
+    closeButtonText: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: 'bold'
+    },
     header: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 5},
     dateText: {textAlign: 'center', color: Colors.textGray, marginBottom: 15},
     input: {backgroundColor: '#f0f2f5', borderRadius: 10, padding: 12, marginBottom: 10 },

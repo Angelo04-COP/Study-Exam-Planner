@@ -317,8 +317,14 @@ const PlanningScreen = () => {
                     // All'interno della prop renderItem, si esegue una ricerca inversa. Il task infatti salva solo l'ID
                     // del corso, ma si vuole mostrare il nome del corso, per cui si utilizza il metodo .find() per recuperare l'oggetto 
                     // corso completo partendo dal codice ID
+                    // - scrollEnabled={false} disattiva lo Scrolling autonomo della FlatList, delegando l'intero scorrimento verticale
+                    //  alla ScrollView principale che fa da contenitore alla pagina
+                    // - nestedScrollEnabled={true}: permette al sistema operativo di calcolare correttamente i tocchi tra componenti nidificati,
+                    //   evitando conflitti di input e preservando l'esatto layout grafico
                     data={items.filter(item => item.date === selectedDate)}
                     keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    nestedScrollEnabled={true}
                     //si aggiunge un padding in fondo alla lista per non far finire i task sotto il tasto +
                     contentContainerStyle = {{ paddingBottom: 200 }}
                     renderItem={({item}) => {
@@ -382,10 +388,13 @@ const PlanningScreen = () => {
 
                                     )}
 
-                                    {/*Se si tratta di una sessione viene mostrata la tipologia con la durata standard fissa, altrimenti 'Obiettivo: tempo stimato in min' 
-                                    in riferimento ad un'attività*/}
+                                    {/*Se si tratta di una sessione viene mostrata la tipologia con la durata standard fissa, altrimenti se è un'attività, 
+                                        viene mostrato il tempo stimato iniziale e, solo se l'attività è completata, viene mostrato anche il tempo effettivo */}
                                     <Text style = {styles.taskDetails}>
-                                        {item.type === 'sessione' ? `Sessione di ${item.sessionType || 'Studio'}: ${item.estimatedTime} min` : `Obiettivo: ${item.estimatedTime} min`}
+                                        {item.type === 'sessione' 
+                                            ? `Sessione di ${item.sessionType || 'Studio'}: ${item.estimatedTime} min` 
+                                            : `Stimato: ${item.estimatedTime} min${item.isCompleted ? ` (Effettivo: ${item.actualTime} min)` : ''}`
+                                        }
 
                                     </Text>
                                     
@@ -492,7 +501,7 @@ const PlanningScreen = () => {
              style = {styles.fab}
              //quando si clicca il pulsante per l'inserimento del task, il Modal AddTaskModal si apre
             onPress = {() => setModalVisible(true)} >
-                <Icon name="plus" size={30} color = "blue"/>
+                <Icon name="plus" size={30} color = "white"/>
             </TouchableOpacity>
 
             {/*Modal di inserimento/modifica dei task: si passano i corsi reali dai mockData*/}
