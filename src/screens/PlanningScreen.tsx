@@ -20,11 +20,12 @@ import { mockCorsi, mockSessioni, mockAttivita } from '../constants/mockData';
 type StudyItem = {
     id: string;
     title: string;
-    course_id?: string; //proprieta opzionale (si noti il ? )
-    session_id?: string | null;
+    desc?: string;
+    course_id?: string; //proprietà opzionale (si noti il ? )
+    session_id?: string | null; //proprietà opzionale (si noti il ?)
     date: string;
     priority: string;
-    sessionType?: string;
+    sessionType?: string;    //proprietà opzionale (si noti il ?)
     isCompleted: boolean;
     estimatedTime: number;
     actualTime: number;
@@ -54,6 +55,10 @@ const PlanningScreen = () => {
 
     //stato per memorizzare temporaneamente l'ID dell'item da cancellare
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+    //stato per memorizzare l'attività che si sta modificando (lo stato assume valore null se si sta inserendo)
+    const [taskToEdit, setTaskToEdit] = useState<StudyItem | null>(null);
+    
 
 
     /**
@@ -113,40 +118,115 @@ const PlanningScreen = () => {
     const [items, setItems] = useState<StudyItem[]>(initialData)
 
     /**
-     * Funzione per aggiungere una nuova attività dal Modal
+     *  Funzione che restituisce il colore associato alla priorità
+     *  dell'attività
+     */
+    const getPriorityColor = (item : StudyItem) => {
+        if (item.type === 'sessione') {
+            return '#94a3b8';
+
+        }
+
+        switch(item.priority) {
+            case 'Alta': return '#ef4444'; //Colore Rosso per priorità alta
+            case 'Media': return '#eab308'; //Colore Giallo per priorità media
+            case 'Bassa': return '#22c55e'; //Colore Verde per priorità bassa
+            default: return '#94a3b8';   //Colore grigio di fallback
+        }
+    };
+
+    /**
+     * Funzione per aggiungere/modificare una nuova attività/sessione dal Modal
      * I dati vengono mapparti per essere coerenti con la struttura dei mockData
      */
     const handleSaveNewTask = (taskData: any) => {
-        const newItem: StudyItem = {
-            id: Date.now().toString(),
-            title: taskData.title,
-            date: taskData.date,
-            priority: taskData.priority,
-            isCompleted: false,
-            //conversione in minuti
-            estimatedTime: parseInt(taskData.estimatedTime) * 60 || 0,
-            actualTime: parseInt(taskData.actualTime) * 60 || 0,
-            type: 'attivita',
-            notes: taskData.notes,
-            //il metodo mockCorsi.find() analizza l'array mockCorsi elemento per elemento. Si ferma
-            //non appena trova un elemento che soddisfa la condizione tra parentesi
-            // Nella condizione c => c.nome === taskData.course: 
-            //   -   c rappresenta il singolo elemento nell'array mockCorsi
-            //   -   viene confrontato il nome dell'elemento con quello ricevuto dal Modal
-            // Se il metodo find trova il corso, allora restituisce tale elemento e il codice prosegue leggendo
-            // la proprietà .id
-            //Se find non trova nulla, invece, viene restituito undefined (si noti infatti l'utilizzo di ? )
-            course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
+        if(taskToEdit){
+            //Logica di MODIFICA
+            //il metodo .map() non modifica direttamente la vecchia lista di attività, 
+            // ma ne crea una copia di origine completamente nuova scorrendo tutti gli elementi presenti
+            // Ogni singolo elemento viene analizzato tramite la variabile temporanea item
+            // if (item.id === taskToEdit.id) confronta l'ID del task che sta scorrendo in quel momento (item.id)
+            // con l'ID dell'attività che l'utente ha scelto di modificare (taskToEdit.id)
+            //     - se l'ID è diverso, l'if viene saltato e il codice esegue l'ulitmo return item; in fondo, rimettendo
+            //         l'attività nella nuova lista esattamente così com'era
+            //      - se l'ID coincide, significa che è stato trovato il task esatto da aggiornare e quindi entra in gioco la logica
+            //         di modifica.
+            //  const isNowSession = taskData.type === 'sessione'; crea una variabile booleana per capire se l'utente, durante la modifica,
+            //   ha trasformato questo elemento in una Sessione Studio oppure lo ha lasciato come Attività
+            // Il blocco return { ..item, } restituisce un nuovo oggetto che prenderà il posto di quello vecchio nella lista: 
+            //     - ...item copia tutte le vecchie proprietà dell'attività original per non perdere i dati strutturali di base che non cambiano
+            //              (come l'ID);
+            //     - title: taskData.title e date: taskData.date sovrascrivono il titolo e la data con i nuovi valori digitati dall'utente
+            //     - priority: isNowSession ? 'Media' : taskData.priority: se l'elemento è diventato una sessione, la priorità viene forzata 
+            //                a 'Media' (valore neutro); se invece è un'attività registra la priorità scelta
+            //      - notes: taskData.notes e type: taskData.type aggiornano le note testuali e cambiano il macro-tipo se l'utente ha modificato la selezione;
+            //      - estimatedTime e actualTime: se l'elemento è una sessione, azzera i tempi a 0; se è un'attività, prende le ore digitate dall'utente nel form
+            //            le trasforma in numeri interi con parseInt e le moltiplica per 60 per salvarle sotto forma di minuti. L'operatore || 0 è un paracadute: se l'utente
+            //              lascia il campo vuoto, assegna automaticamente 0 evitando che il valore diventi NaN (Not a number)
+            //      - course_id: mockCorsi.find(...)?.id: cerca all'interno dell'array globale dei corsi quello il cui nome corrisponde
+            //                 a quello selezionato nel form,  e ne estrae il codice ID corrispondente per salvarlo come chiave esterna di associazione;
+            //   setTaskToEdit(null) : una volta che l'array aggiornato è stato passato alla state setter function setItems, l'operazione è conclusa; quindi lo stato di modifica
+            //      viene resettato a null; in questo modo l'applicazione esce dalla "modalità modifica" e, la prossima volta che l'utente cliccherà sul pulsante + , il pop-up si riaprirà
+            //      vuoto in modalità "nuovo inserimento"
+            setItems(items.map(item => {
+                if(item.id === taskToEdit.id) {
+                    const isNowSession = taskData.type === 'sessione';
+                    return {
+                        ...item, 
+                        title: taskData.title,
+                        desc: taskData.desc,
+                        date: taskData.date,
+                        sessionType: taskData.sessionType,
+                        //le sessioni hanno priorità fissa 'Media'
+                        priority: isNowSession ? 'Media' : taskData.priority,
+                        notes: taskData.notes,
+                        //i tempi servono solo per l'attività
+                        estimatedTime: isNowSession ? 0 : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
+                        actualTime: isNowSession ? 0 : Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                        type: taskData.type,
+                        course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
+                    };
+                }
+                return item;
+            }));
+            setTaskToEdit(null); //reset dello stato di modifica    
 
-        };
 
-        setItems([...items, newItem]);
+        } else {
+            //Logica di INSERIMENTO DINAMICA
+            const isSession = taskData.type === 'sessione';
+            const newItem: StudyItem = {
+                id: Date.now().toString(),
+                title: taskData.title,
+                date: taskData.date,
+                desc: taskData.desc,
+                priority: isSession ? 'Media' : taskData.priority,
+                isCompleted: false,
+                //conversione in minuti
+                estimatedTime: isSession ? 0 : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
+                actualTime: isSession ? 0 :  Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                type: taskData.type,
+                sessionType: taskData.sessionType,
+                notes: taskData.notes,
+                //il metodo mockCorsi.find() analizza l'array mockCorsi elemento per elemento. Si ferma
+                //non appena trova un elemento che soddisfa la condizione tra parentesi
+                // Nella condizione c => c.nome === taskData.course: 
+                //   -   c rappresenta il singolo elemento nell'array mockCorsi
+                //   -   viene confrontato il nome dell'elemento con quello ricevuto dal Modal
+                // Se il metodo find trova il corso, allora restituisce tale elemento e il codice prosegue leggendo
+                // la proprietà .id
+                //Se find non trova nulla, invece, viene restituito undefined (si noti infatti l'utilizzo di ? )
+                course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
+
+            };
+            setItems([...items, newItem]);
+        }
         
         //il Modal si chiude dopo il salvataggio
         setModalVisible(false);
 
 
-    }
+    };
 
     //segnare un task come completato (solo per i task di tipo 'attività')
     const toggleComplete = (id: string) => {
@@ -188,6 +268,13 @@ const PlanningScreen = () => {
             setItemToDelete(null);
         }
     };
+
+    //Attivazione della modalità di modifica
+    const startEditItem = (item: StudyItem) => {
+        setTaskToEdit(item);
+        setModalVisible(true);
+
+    }
 
     //Visualizzazione del componente PlanningScreen per la schermata di pianificazione dei task
     return(
@@ -272,18 +359,32 @@ const PlanningScreen = () => {
 
                                 {/*Informazioni sul task*/}
                                 <View style = {styles.taskInfo}>
-                                    {/*Se item.isCompleted è true viene applicato lo stile styles.textStrikethrough*/}
-                                    <Text style={[styles.taskTitle, item.isCompleted && styles.textStrikethrough]}>
-                                        {item.title}
-                                    </Text>
+                                    <View style={styles.titleRow}>
+                                        {/*Colore priorità : badge circolare dinamico inserito a sinistra del titolo*/}
+                                          <View style = {[styles.priorityDot, {backgroundColor: getPriorityColor(item) }]}/>
+
+                                        {/*Se item.isCompleted è true viene applicato lo stile styles.textStrikethrough*/}
+                                        <Text style={[styles.taskTitle, item.isCompleted && styles.textStrikethrough]}>
+                                            {item.title}
+                                        </Text>
+                                     </View>
 
                                     {/*Badge del corso (se presente)*/}
                                     {corso && <Text style= {styles.courseTag}>{corso.nome}</Text>}
                                     
+                                    {/*Tipologia di Sessione Associata (il badge relativo alla sessione associata
+                                        è visibile solo se la sessione è presente e se l'elemento che si sta inserendo si tratta di un'attività)*/}
+                                    {item.type === 'attivita' && item.sessionType && (
+                                        <Text style={[styles.sessionBadge, item.isCompleted && styles.textStrikethrough]}>
+                                            Tipologia Sessione: <Text style={{ fontWeight: '600'}}>{item.sessionType}</Text>
+                                        </Text>
+
+                                    )}
+
                                     {/*Se si tratta di una sessione viene mostrato 'Sessione di studio', altrimenti 'Obiettivo: tempo stimato in min' 
                                     in riferimento ad un'attività*/}
                                     <Text style = {styles.taskDetails}>
-                                        {item.type === 'sessione' ? 'Sessione di studio' : `Obiettivo: ${item.estimatedTime} min`}
+                                        {item.type === 'sessione' ? `Sessione di ${item.sessionType || 'Studio'}` : `Obiettivo: ${item.estimatedTime} min`}
 
                                     </Text>
                                     
@@ -291,21 +392,36 @@ const PlanningScreen = () => {
                                     {item.notes ? <Text style = {styles.notesText}>{item.notes}</Text> : null}
 
                                 </View>
-                                    
-                                {/*Pulsante di eliminazione per ogni singolo elemento della lista; tale pulsante, che ha l'icona di un
-                                cestino (trash-can-outline) è wrappato in un TouchableOpacity
-                                 per renderlo cliccabile. Quando l'utente tocca il pulsante del cestino ( onPress = {() => deleteItem(item.id)})
-                                  viene chiamata la funzione deleteItem passandogli l'ID specifico di quell'attività (task), quindi apparirà un
-                                  Alert che chiede all'utente se vuole effettivamente eliminare il task
-                                  size = {22} definisce la dimensione dell'icona 
-                                 */}
-                                <TouchableOpacity 
-                                    style = {styles.deleteBtn}
-                                    onPress = {() => deleteItem(item.id)} 
-                                >
-                                    <Icon name="trash-can-outline" size={22} color="#e74c3c"/>
-                                </TouchableOpacity>
 
+                                
+                                <View style = {styles.actionButtons}>
+                                    {/*Pulsante per effettuare la modifica di un elemento: la modifica di un'attività non è permessa
+                                          se l'attività è spuntata come completata*/}
+                                    {!item.isCompleted ? (
+                                    <TouchableOpacity
+                                        style={styles.actionBtn}
+                                        onPress={ () => startEditItem(item)}
+                                    >
+                                        <Icon name="pencil-outline" size={22} color={Colors.primary} />
+                                    </TouchableOpacity>
+                                   ) : (    
+                                        <Icon name = "pencil-outline" size = {20} color="#cbd5e1" style={{opacity: 0.5}}/>
+                                   )}
+                                    
+                                    {/*Pulsante di eliminazione per ogni singolo elemento della lista; tale pulsante, che ha l'icona di un
+                                        cestino (trash-can-outline) è wrappato in un TouchableOpacity
+                                        per renderlo cliccabile. Quando l'utente tocca il pulsante del cestino ( onPress = {() => deleteItem(item.id)})
+                                        viene chiamata la funzione deleteItem passandogli l'ID specifico di quell'attività (task), quindi apparirà un
+                                        Alert che chiede all'utente se vuole effettivamente eliminare il task
+                                        size = {22} definisce la dimensione dell'icona 
+                                    */}
+                                    <TouchableOpacity 
+                                        style = {styles.actionBtn}
+                                        onPress = {() => deleteItem(item.id)} 
+                                    >
+                                        <Icon name="trash-can-outline" size={22} color="#e74c3c"/>
+                                    </TouchableOpacity>
+                                </View> 
 
                              </View>   
 
@@ -378,17 +494,21 @@ const PlanningScreen = () => {
                 <Icon name="plus" size={30} color = "blue"/>
             </TouchableOpacity>
 
-            {/*Modal di inserimento dei task: si passano i corsi reali dai mockData*/}
+            {/*Modal di inserimento/modifica dei task: si passano i corsi reali dai mockData*/}
             <AddTaskModal 
                 isVisible = {isModalVisible}
                 //chiusura del modal: il modal non è più visibile
-                onClose={() => setModalVisible(false)}
+                onClose={() => {
+                    setModalVisible(false);
+                    setTaskToEdit(null);
+                }}
                 //onSave per salvare le attività
                 onSave={handleSaveNewTask}
                 date={selectedDate}
                 //non si passa l'intero array mockCorsi, ma si crea una versione semplificata utilizzando
                 // il metodo .map, in modo tale da passare al componente AddTaskModal solo l'ID e il nome del corso
                 courses = {mockCorsi.map(c => ({ id: c.id, name: c.nome}))}
+                taskToEdit={taskToEdit}
                 
             />
         </ScrollView> 
@@ -412,10 +532,27 @@ const styles = StyleSheet.create({
         marginHorizontal: 2
 
     },
-    deleteBtn: {
-        padding: 5,
-        marginLeft: 10
+    actionButtons: {
+        flexDirection: 'row',
+        alignItems: 'center'
 
+    },
+    actionBtn: {
+        padding: 5,
+        marginLeft: 8
+
+    },
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 2
+
+    },
+    priorityDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        marginRight: 8
     },
     completedCard: {opacity: 0.6, backgroundColor: '#f8f9fa'},
     iconContainer: { marginRight: 10 },
@@ -427,6 +564,13 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textTransform: 'uppercase',
         marginTop: 2
+    },
+    sessionBadge: {
+        fontSize: 12,
+        color: '#64748b',
+        marginTop: 2,
+        marginBottom: 4,
+        fontStyle: 'italic'
     },
     taskDetails: { fontSize: 11, color: Colors.textGray, marginTop: 2},
     textStrikethrough : { textDecorationLine: 'line-through', color: 'gray'},
