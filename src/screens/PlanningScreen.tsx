@@ -10,6 +10,7 @@ import Colors from '../constants/Colors';
 // si importano i dati fittizi definiti nel file mockData.js
 import { mockCorsi, mockSessioni, mockAttivita } from '../constants/mockData';
 
+const DURATA_SESSIONE_STANDARD = 120; //2 ore fisse per qualsiasi sessione
 
 
 /*
@@ -160,7 +161,7 @@ const PlanningScreen = () => {
             //     - priority: isNowSession ? 'Media' : taskData.priority: se l'elemento è diventato una sessione, la priorità viene forzata 
             //                a 'Media' (valore neutro); se invece è un'attività registra la priorità scelta
             //      - notes: taskData.notes e type: taskData.type aggiornano le note testuali e cambiano il macro-tipo se l'utente ha modificato la selezione;
-            //      - estimatedTime e actualTime: se l'elemento è una sessione, azzera i tempi a 0; se è un'attività, prende le ore digitate dall'utente nel form
+            //      - estimatedTime e actualTime: se l'elemento è una sessione, applica la durata standard di 120 minuti (2 ore) se è un'attività, prende le ore digitate dall'utente nel form
             //            le trasforma in numeri interi con parseInt e le moltiplica per 60 per salvarle sotto forma di minuti. L'operatore || 0 è un paracadute: se l'utente
             //              lascia il campo vuoto, assegna automaticamente 0 evitando che il valore diventi NaN (Not a number)
             //      - course_id: mockCorsi.find(...)?.id: cerca all'interno dell'array globale dei corsi quello il cui nome corrisponde
@@ -180,9 +181,9 @@ const PlanningScreen = () => {
                         //le sessioni hanno priorità fissa 'Media'
                         priority: isNowSession ? 'Media' : taskData.priority,
                         notes: taskData.notes,
-                        //i tempi servono solo per l'attività
-                        estimatedTime: isNowSession ? 0 : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
-                        actualTime: isNowSession ? 0 : Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                        //i tempi effettivi e stimati servono solo per l'attività; le sessioni hanno una durata standard fissa
+                        estimatedTime: isNowSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
+                        actualTime: isNowSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.actualTime) * 60) || 0,
                         type: taskData.type,
                         course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
                     };
@@ -203,8 +204,8 @@ const PlanningScreen = () => {
                 priority: isSession ? 'Media' : taskData.priority,
                 isCompleted: false,
                 //conversione in minuti
-                estimatedTime: isSession ? 0 : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
-                actualTime: isSession ? 0 :  Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                estimatedTime: isSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
+                actualTime: isSession ? DURATA_SESSIONE_STANDARD :  Math.round(parseFloat(taskData.actualTime) * 60) || 0,
                 type: taskData.type,
                 sessionType: taskData.sessionType,
                 notes: taskData.notes,
@@ -381,10 +382,10 @@ const PlanningScreen = () => {
 
                                     )}
 
-                                    {/*Se si tratta di una sessione viene mostrato 'Sessione di studio', altrimenti 'Obiettivo: tempo stimato in min' 
+                                    {/*Se si tratta di una sessione viene mostrata la tipologia con la durata standard fissa, altrimenti 'Obiettivo: tempo stimato in min' 
                                     in riferimento ad un'attività*/}
                                     <Text style = {styles.taskDetails}>
-                                        {item.type === 'sessione' ? `Sessione di ${item.sessionType || 'Studio'}` : `Obiettivo: ${item.estimatedTime} min`}
+                                        {item.type === 'sessione' ? `Sessione di ${item.sessionType || 'Studio'}: ${item.estimatedTime} min` : `Obiettivo: ${item.estimatedTime} min`}
 
                                     </Text>
                                     
@@ -456,7 +457,7 @@ const PlanningScreen = () => {
                         <View style={styles.modalAlertContent}>
                             <Text style={styles.modalAlertTitle}>Elimina</Text>
                             <Text style={styles.modalAlertText}>
-                                Rimuovere questa attivita dalla pianificazione?
+                                Rimuovere questa attività/sessione dalla pianificazione?
                             </Text>
 
                             <View style={styles.modalAlertButtons}>

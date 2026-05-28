@@ -148,7 +148,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             {/*<View> principale del contenuto del Modal*/}
             <View style={styles.content}>
                 {/*Il titolo superiore si adatta dinamicamente all'operazione in corso*/}
-                <Text style = {styles.header}>{taskToEdit ? "MODIFICA ELEMENTO" : "NUOVA ATTIVITA' / SESSIONE"}</Text>
+                <Text style = {styles.header}>{taskToEdit ? "MODIFICA ATTIVITA' / SESSIONE" : "NUOVA ATTIVITA' / SESSIONE"}</Text>
                 <Text style = {styles.dateText}>Data: {date}</Text>
 
             <ScrollView
@@ -206,7 +206,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                 <TextInput placeholder="Note aggiuntive" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} value = {notes}/>
 
                 {/*Corso associato*/}
-                <Text style = {styles.label}>CORSO ASSOCIATO</Text>
+                <Text style = {styles.label}>CORSO ASSOCIATO (OPZIONALE)</Text>
                 {/*la proprietà horizontal permette all'utente di scorrere verso destra e sinsitra per vedere tutti i corsi
                     impostando showHorizontalScrollIndicator a false, la barra di scorrimento viene nascosta
 
