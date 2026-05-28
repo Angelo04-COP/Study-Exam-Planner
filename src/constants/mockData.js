@@ -189,6 +189,35 @@ export const mockAttivita = [
     tempo_stimato_minuti: 60, // 1 ora pianificata per il Giovedì (28 Maggio)
     tempo_impiegato_minuti: 0,
     note: '',
+  },
+  // --- AGGIUNTE PER IL TIMER --- 
+  {
+    id: 'a5',
+    corso_id: 'c2',
+    sessione_id: 's1', 
+    titolo: 'Lettura documentazione OpenCV',
+    descrizione: 'Studiare la documentazione sui filtri colore.',
+    data_ora_inizio: '2026-05-25T11:00:00',
+    data_ora_scadenza: '2026-05-25T23:59:00',
+    priorita: 'Media',
+    completata: false,
+    tempo_stimato_minuti: 60,
+    tempo_impiegato_minuti: 0,
+    note: '',
+  },
+  {
+    id: 'a6',
+    corso_id: 'c3',
+    sessione_id: 's2', 
+    titolo: 'Verifica pesi rete neurale',
+    descrizione: 'Salvare i pesi del modello addestrato.',
+    data_ora_inizio: '2026-05-27T16:00:00',
+    data_ora_scadenza: '2026-05-29T23:59:00',
+    priorita: 'Media',
+    completata: false,
+    tempo_stimato_minuti: 90,
+    tempo_impiegato_minuti: 0,
+    note: '',
   }
 ];
 
@@ -211,4 +240,35 @@ export const mockTempiStudio = [
   // GIOVEDÌ (28 Maggio): 1 ora stimata (attività a4) -> 0 ore studiate (per ora).
   // Risultato grafico: Barra interamente azzurra (ancora tutto da studiare).
   // Non essendoci log, il motore grafico calcolerà 0 e metterà 1h rimanente.
+];
+
+// 5. STORICO DEI TIMER COMPLETATI
+export const mockStoricoTimer = [
+  {
+    id: 't1',
+    sessione_id: 's1',
+    attivita_id: 'a1', 
+    data_registrazione: '2026-05-25',
+    minuti_registrati: 120, 
+    completato_alle: '11:00',
+    stato: 'completato',
+  },
+  {
+    id: 't2',
+    sessione_id: 's1',
+    attivita_id: 'a5',
+    data_registrazione: '2026-05-25',
+    minuti_registrati: 45,
+    completato_alle: '12:30',
+    stato: 'interrotto',
+  },
+  {
+    id: 't3',
+    sessione_id: 's2',
+    attivita_id: 'a3',
+    data_registrazione: '2026-05-27',
+    minuti_registrati: 35, 
+    completato_alle: '15:35', 
+    stato: 'cambio',
+  }
 ];
