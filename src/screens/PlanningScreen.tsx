@@ -280,7 +280,7 @@ const PlanningScreen = () => {
     //Visualizzazione del componente PlanningScreen per la schermata di pianificazione dei task
     return(
         <ScrollView style = {styles.container}>
-            <Text style = {styles.screenTitle}>PIANIFICAZIONE STUDIO</Text>
+            <Text style = {styles.screenTitle}>PIANIFICAZIONE</Text>
 
             {/*Componente Calendar per pianificare un'attività
                 Il componente Calendar è il componente che permette di gestire calendari in React Native: 
@@ -528,7 +528,16 @@ const PlanningScreen = () => {
 
 const styles = StyleSheet.create({
     container: {flex: 1, backgroundColor: Colors.background, paddingTop: 40},
-    screenTitle: {fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 10},
+    screenTitle: {
+        fontSize: 27, 
+        fontWeight: 'bold', 
+        color: '#2c2c2e',
+        textAlign: 'left',
+        alignSelf: 'flex-start',
+        marginTop: 25,
+        paddingHorizontal: 20,
+        marginBottom: 15
+    },
     todoContainer: {flex: 1, padding: 20},
     subTitle: {fontSize: 16, fontWeight: 'bold', marginBottom: 15, color: '#34495e'},
     taskCard: {
