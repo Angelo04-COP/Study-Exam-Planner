@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-// IL PERCORSO QUI È CAMBIATO PERCHÉ ORA SIAMO IN src/screens
+
 import { mockAttivita, mockSessioni, mockStoricoTimer } from '../constants/mockData';
 
 type Sessione = {
