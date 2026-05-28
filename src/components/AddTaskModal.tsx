@@ -6,7 +6,7 @@
  * 
  */
 import React from 'react';
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView} from 'react-native';
 import Modal from 'react-native-modal';
 import Colors from '../constants/Colors';
@@ -22,13 +22,15 @@ type Course = {
 type AddTaskModalProps = {
     isVisible: boolean;
     onClose : () => void;
-    onSave: (task: any) => void;
+    onSave: (data: any) => void;
     date: string;
     //proprietà courses è array di corsi
     courses: Course[]
+    //taskToEdit riceve l'oggetto completo se siamo in modalità modifica; è una proprietà opzionale , si noti il ?
+    taskToEdit ?: any;
 }
 
-const AddTaskModal = ({isVisible, onClose, onSave, date, courses}: AddTaskModalProps) => {
+const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: AddTaskModalProps) => {
     //Stati per gestire i dati del form relativi ad un'attività
     //Per associare uno stato ad un componente si usa una speciale funzione
     //hook chiamata useState; tale funzione:
@@ -53,6 +55,56 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses}: AddTaskModalP
     const [actTime, setActTime] = useState('');
     //note aggiuntive
     const [notes, setNotes] = useState('');
+    //stato per gestire la selezione della tipologia ('sessione' o 'attivita');
+    // di default il valore iniziale dello stato è 'attivita'
+    const [type, setType] = useState<'attivita' | 'sessione'> ('attivita')
+
+
+    //si imposta l'effetto useEffect per intercettare l'apertura e il tipo di operazione (INSERIMENTO O MODIFICA)
+    useEffect(() => {
+        if (taskToEdit) {
+            //Modalità MODIFICA: i valori salvati vengono ripristinati
+            setTitle(taskToEdit.title);
+            setType(taskToEdit.type);
+            setDesc(taskToEdit.desc || '');
+            setPriority(taskToEdit.priority);
+            setNotes(taskToEdit.notes || '');
+            setSessionType(taskToEdit.sessionType || 'Nessuna');
+
+            //i tempi effettivi e reali vengono pre-compilati solo se l'elemento è un'attività
+            if(taskToEdit.type === 'attivita') {
+                //nel file principale i dati sono in minuti, qui il dividiamo per 60 
+                //per mostrarli in ore nel TextInput
+                setEstTime(taskToEdit.estimatedTime ? (taskToEdit.estimatedTime / 60).toString() : '');
+                setActTime(taskToEdit.actualTime ? (taskToEdit.actualTime / 60).toString() : '');
+            }else {
+                setEstTime('');
+                setActTime('');
+
+            }
+            //si recupera il nome del corso partendo dal suo ID
+            const corsoAssociato = courses.find(c => c.id == taskToEdit.course_id);
+            if (corsoAssociato) {
+                setSelectedCourse(corsoAssociato.name);
+            } else {
+                setSelectedCourse('');
+
+            }
+        } else {
+            //Modalità INSERIMENTO NUOVO ELEMENTO: tutti i campi puliti vengono completamente resettati
+            setTitle('');
+            setDesc('');
+            setType('attivita');
+            setPriority('Media');
+            setSessionType('Studio');
+            setEstTime('');
+            setActTime('');
+            setNotes('');
+            setSelectedCourse('');
+
+
+        }
+    }, [taskToEdit, isVisible]);
 
     const handleSave = () => {
         if(!title.trim()) return;
@@ -63,27 +115,23 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses}: AddTaskModalP
             desc,
             course: selectedCourse,
             date, 
-            priority,
-            sessionType,
+            //le sessioni usano un valore neutro di default per la priorità
+            priority: type === 'sessione' ? 'Media' : priority,
+            //si passa il valore calcolato di sessionType se il macro-tipo è 'sessione'
+            // OPPURE se è un'attivita che ha una sessione associata (diversa da 'Nessuna')
+            sessionType: sessionType === 'Nessuna' ? undefined : sessionType,
             estimatedTime: estTime,
             actualTime: actTime,
             notes,
+            //comunica se salvare come attività o sessione
+            type,
             isCompleted: false
 
         });
-
-        //reset dei campi
-        setTitle('');
-        setDesc('');
-        setSelectedCourse('');
-        setEstTime('');
-        setActTime('');
-        setNotes('');
-
+        
         //chiudiamo il modal dopo il salvataggio
         onClose();
-
-
+    
     };
 
     return(
@@ -99,9 +147,41 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses}: AddTaskModalP
         <Modal isVisible={isVisible} style={styles.modalMargin} onBackdropPress={onClose}>
             {/*<View> principale del contenuto del Modal*/}
             <View style={styles.content}>
-                <Text style = {styles.header}>NUOVA ATTIVITA' / SESSIONE</Text>
+                {/*Il titolo superiore si adatta dinamicamente all'operazione in corso*/}
+                <Text style = {styles.header}>{taskToEdit ? "MODIFICA ELEMENTO" : "NUOVA ATTIVITA' / SESSIONE"}</Text>
                 <Text style = {styles.dateText}>Data: {date}</Text>
 
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20}}
+            >
+                {/*SELETTORE DI MACRO-CATEGORIA PER INSERIRE SESSIONI O ATTIVITA' */}
+                <Text style = {styles.label}> TIPOLOGIA PIANIFICAZIONE </Text>
+                <View style={styles.typeRow}>
+                    <TouchableOpacity 
+                        style={[styles.typeBtn, type === 'attivita' && styles.typeBtnActive]}
+                        onPress = { () => setType('attivita')}>
+                            <Text style={{color: type === 'attivita' ? 'white' : 'black', fontWeight: 'bold'}}>
+                                Attività/Obiettivo
+                            </Text>  
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.typeBtn, type === 'sessione' && styles.typeBtnActive]}
+                        onPress = { () => {
+                            setType('sessione');
+                            //se si passa nella sezione di aggiunta di una sessione e precedentemente è stato selezionato
+                            // 'Nessuna', allora la variabile di stato sessionType viene resettata al valore 'Studio'
+                            if (sessionType === 'Nessuna'){
+                                setSessionType('Studio');
+                            }
+                        }}>
+                            <Text style={{color: type === 'sessione' ? 'white' : 'black', fontWeight: 'bold'}}>
+                                Sessione
+                            </Text>  
+                    </TouchableOpacity>
+                </View>
+
+                <Text style = {styles.label}> DETTAGLI PIANIFICAZIONE </Text>
                 {/*Input per il titolo
                     -la props onChangeText è un evento che viene attivato ogni volta che l'utente digita o cancella
                     un caratter
@@ -109,19 +189,21 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses}: AddTaskModalP
                     a una variabile di stato
 
                 */}
-                <TextInput placeholder = "Titolo (es: Studio Cap.1) " style={styles.input} onChangeText={setTitle} value={title} />
+                <TextInput placeholder = "Titolo" style={styles.input} onChangeText={setTitle} value={title} />
 
                 {/*Input per la descrizione*/}
-                <TextInput placeholder="Descrizione breve" style={styles.input} onChangeText = {setDesc} value = {desc} />
+                <TextInput placeholder="Descrizione breve" style={styles.input} onChangeText = {setDesc} value={desc} />
 
-                {/*Input per tempo stimato ed effettivo dell'attività*/}
+                {/*Input per tempo stimato ed effettivo dell'attività: i tempi stimati ed effettivi compaiono solo per
+                le attività*/}
+                {type === 'attivita' && (
                 <View style = {styles.row}>
-                    <TextInput placeholder="Tempo Stimato (h)" keyboardType="numeric" style={[styles.input, {flex: 1, marginRight: 5 }]} onChangeText={setEstTime}/>
-                    <TextInput placeholder="Tempo effettivo (h)" keyboardType= "numeric" style={[styles.input, {flex: 1, marginRight: 5}]} onChangeText={setActTime} />
+                    <TextInput placeholder="Tempo Stimato (h)" keyboardType="numeric" style={[styles.input, {flex: 1, marginRight: 5 }]} onChangeText={setEstTime} value={estTime}/>
+                    <TextInput placeholder="Tempo Effettivo (h)" keyboardType= "numeric" style={[styles.input, {flex: 1, marginRight: 5}]} onChangeText={setActTime} value={actTime} />
                 </View>
-                
+                )}  
                 {/*Input per le note aggiuntive*/}
-                <TextInput placeholder="{Note aggiuntive" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} />
+                <TextInput placeholder="Note aggiuntive" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} value = {notes}/>
 
                 {/*Corso associato*/}
                 <Text style = {styles.label}>CORSO ASSOCIATO</Text>
@@ -157,30 +239,50 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses}: AddTaskModalP
                 </ScrollView> 
                 
                 {/*Tipo di Sessione*/}
-                <Text style={styles.label}>TIPO SESSIONE</Text>
+                <Text style={styles.label}>
+                    {type === 'sessione' ? "TIPOLOGIA SESSIONE" : "SESSIONE ASSOCIATA (OPZIONALE)"}
+                </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                      {['Studio', 'Ripasso', 'Esercitazione', 'Laboratorio'].map((t) =>(
+                      {[ 'Nessuna', 'Studio', 'Ripasso', 'Esercitazione', 'Laboratorio']
+                      //filtro dinamico: se si sta aggiungendo una sessione, si rimuove l'opzione 'Nessuna' dalle opzioni
+                      // cliccabili mediante il metodo filter
+                      //se si sta inserendo un'attività, la prima parte della condizione (type === 'attivita') è soddisfatta;
+                      // di conseguenza l'operatore OR || interrompe il controllo e restituisce true per tutti gli elementi della lista
+                      // se si sta inserendo una sessione , l'operatore OR si sposta a valutare la seconda parte della condizione
+                      // (ovvero t !== 'Nessuna') la seconda parte della condizione restituisce falso quando si incontra l'opzione 'Nessuna', che 
+                      // viene di conseguenza esclusa dal rendering
+                      .filter(t => type === 'attivita' || t !== 'Nessuna')
+                      .map((t) =>(
                         <TouchableOpacity key={t} onPress = {() => setSessionType(t)} style = {[styles.chip, sessionType === t && {backgroundColor: Colors.primary}]}> 
                               <Text style = {{color: sessionType === t ? 'white' : 'black'}}>{t}</Text>
                         </TouchableOpacity> 
                       ))}
                 </ScrollView>  
                 
-                {/*Priorità dell'attività*/}
-                <Text style = {styles.label}>PRIORITA'</Text>
-                <View style = {styles.priorityRow}>
-                    {(['Bassa', 'Media', 'Alta'] as const).map((p) => (
-                        <TouchableOpacity key={p} onPress={ () => setPriority(p)} style={[styles.priorityBtn, priority === p && {backgroundColor: Colors.primary}]}>
-                           <Text style = {{color: priority === p ? 'white' : 'black'}} > {p}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                {/*Priorità dell'attività - Rendering condizionale inline: la priorità viene mostrata 
+                     e configurata solo per le attività*/}
+                {type === 'attivita' && (
+                   <View>
+                        <Text style = {styles.label}>PRIORITA'</Text>
+                        <View style = {styles.priorityRow}>
+                            {(['Bassa', 'Media', 'Alta'] as const).map((p) => (
+                                <TouchableOpacity key={p} onPress={ () => setPriority(p)} style={[styles.priorityBtn, priority === p && {backgroundColor: Colors.primary}]}>
+                                    <Text style = {{color: priority === p ? 'white' : 'black'}} > {p}</Text>
+                                </TouchableOpacity>
+                        ))}
+                    </View>
+                 </View>
+                )}
+            </ScrollView>
                 
-                <TouchableOpacity style = {styles.btnSave} onPress={handleSave}>
-                        <Text style = {styles.btnSaveText}>PIANIFICA ATTIVITA'</Text>
-                </TouchableOpacity>
-            </View>
-        </Modal>
+            {/*Pulsante di salvataggio finale adattivo*/}
+            <TouchableOpacity style = {styles.btnSave} onPress={handleSave}>
+                    <Text style = {styles.btnSaveText}>
+                        {taskToEdit ? "AGGIORNA ATTIVITA'/SESSIONE" : "PIANIFICA ATTIVITA'/SESSIONE"}
+                    </Text>
+            </TouchableOpacity>
+        </View>
+     </Modal>
    );
 };
 
@@ -198,9 +300,29 @@ const styles = StyleSheet.create({
     priorityRow: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20},
     priorityBtn: {flex: 1, padding: 10, alignItems: 'center', backgroundColor: '#eee', borderRadius: 10, marginHorizontal: 2 },
     btnSave: {backgroundColor: Colors.primary, padding: 18, borderRadius: 15, alignItems: 'center'},
-    btnSaveText : {color: 'white', fontWeight: 'bold', fontSize: 16}
-
-
+    btnSaveText : {color: 'white', fontWeight: 'bold', fontSize: 16},
+    typeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#f0f2f5',
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 15
+    },
+    typeBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderRadius: 10
+    },
+    typeBtnActive: {
+        backgroundColor: Colors.primary,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1},
+        shadowOpacity: 0.2,
+        shadowRadius: 1.41
+    }
 });
 
 export default AddTaskModal;

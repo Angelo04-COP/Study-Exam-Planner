@@ -2,42 +2,64 @@
 //Questo file contiene liste di dati fittizzi esportabili per testare le schermate
 //successivamente saranno sostituiti con i dati salvati sul dispositivo.
 
+
 // 1. LISTA DEI CORSI
 export const mockCorsi = [
-
   {
-    id: 'c1', // L'ID univoco (utile per collegare esami e attività al corso)
-    nome: 'ML',
+    id: 'c1',
+    nome: 'Basi di Dati',
     docente: 'Prof. Rossi',
-    semestre: 'Secondo Semestre', //valutare se aggiungere un campo per l'anno accademico
+    semestre: 'Primo Semestre',
     anno_accademico: '2025/2026', 
     cfu: 9,
-    descrizione: 'Analisi di dataset e modelli di classificazione in Python.',
-    stato: 'in corso', // Valori possibili: 'da iniziare', 'in corso', 'completato'
+    descrizione: 'Progettazione relazionale e query SQL avanzate.',
+    stato: 'completato',
     voto_desiderato: 28,
-    voto_ottenuto: null,
+    voto_ottenuto: 30,
+    data_inizio: '2025-10-01',
+    data_fine: '2026-01-15',
   },
   {
     id: 'c2',
-    nome: 'Programmazione a Oggetti',
+    nome: 'Computer Vision',
     docente: 'Prof. Verdi',
-    semestre: 'Primo Semestre',
-    cfu: 12,
-    descrizione: 'Sviluppo software e implementazione pattern DAO in Java.',
-    stato: 'completato',
-    voto_desiderato: 26,
-    voto_ottenuto: 28,
+    semestre: 'Secondo Semestre',
+    anno_accademico: '2025/2026', 
+    cfu: 9,
+    descrizione: 'Riconoscimento volti e object detection in Python.',
+    stato: 'in corso',
+    voto_desiderato: 28,
+    voto_ottenuto: null,
+    data_inizio: '2026-03-01',
+    data_fine: '2026-06-15', // Corso di 106 giorni
   },
   {
     id: 'c3',
-    nome: 'Progettazione Interfacce',
+    nome: 'Sistemi di Intelligenza Artificiale',
     docente: 'Prof. Bianchi',
     semestre: 'Secondo Semestre',
-    cfu: 6,
-    descrizione: 'UI/UX design e sviluppo frontend.',
-    stato: 'da iniziare',
-    voto_desiderato: 30,
+    anno_accademico: '2025/2026', 
+    cfu: 12,
+    descrizione: 'Sviluppo di agenti autonomi, simulazioni TORCS.',
+    stato: 'in corso',
+    voto_desiderato: 26,
     voto_ottenuto: null,
+    data_inizio: '2026-03-01',
+    data_fine: '2026-05-30', // Corso agli sgoccioli
+  },
+  {
+    id: 'c4',
+    nome: 'Programmazione Java',
+    docente: 'Prof. Neri',
+    semestre: 'Primo Semestre',
+    anno_accademico: '2025/2026', 
+    cfu: 6,
+    descrizione: 'Pattern architetturali e metodi helper.',
+    stato: 'completato',
+    voto_desiderato: 25,
+    voto_ottenuto: 27,
+    data_inizio: '2025-10-01',
+    data_fine: '2026-01-15',
   }
 ];
 
@@ -45,25 +67,47 @@ export const mockCorsi = [
 export const mockEsami = [
   {
     id: 'e1',
-    corso_id: 'c1', // Questo ID collega l'esame al corso "Machine Learning"
-    titolo: 'Progetto Pratico Python',
-    data: '2026-06-15',
-    tipologia: 'Progetto', // Esempi: 'Scritto', 'Orale', 'Progetto'
+    corso_id: 'c1',
+    titolo: 'Esame Scritto SQL',
+    data: '2026-01-20',
+    tipologia: 'Scritto',
     priorita: 'Alta',
-    stato: 'programmato', // Esempi: 'programmato', 'acettato', 'annullato', 'non accettato', 'non superato'
-    note: 'Inviare il codice sorgente su GitHub prima dell\'esame.',
-    voto_risultato: null,
+    stato: 'superato',
+    note: 'Ricordarsi di rivedere la logica delle chiavi esterne 1:N.',
+    voto_risultato: 30,
   },
   {
     id: 'e2',
-    corso_id: 'c2',
-    titolo: 'Esame Orale Java',
-    data: '2026-02-10',
-    tipologia: 'Orale',
+    corso_id: 'c4',
+    titolo: 'Progetto DAO',
+    data: '2026-02-15',
+    tipologia: 'Progetto',
     priorita: 'Media',
     stato: 'superato',
-    note: 'Portare il PC con NetBeans configurato.',
-    voto_risultato: 28,
+    note: 'Inviato su GitHub.',
+    voto_risultato: 27,
+  },
+  {
+    id: 'e3',
+    corso_id: 'c2',
+    titolo: 'Presentazione Script Python',
+    data: '2026-06-18',
+    tipologia: 'Orale',
+    priorita: 'Alta',
+    stato: 'programmato',
+    note: 'Portare il PC con lo script per il rilevamento volti funzionante.',
+    voto_risultato: null,
+  },
+  {
+    id: 'e4',
+    corso_id: 'c3',
+    titolo: 'Consegna Simulatore',
+    data: '2026-07-02',
+    tipologia: 'Progetto',
+    priorita: 'Alta',
+    stato: 'programmato',
+    note: 'Verificare l\'addestramento del Random Forest Regressor.',
+    voto_risultato: null,
   }
 ];
 
@@ -71,65 +115,100 @@ export const mockEsami = [
 export const mockSessioni = [
   {
     id: 's1',
-    titolo: 'Mattinata in Biblioteca',
-    data: '2026-05-12', // Associata a un giorno specifico come chiede la traccia
-    data_ora_inizio: '2026-05-12T09:00:00', // Data e ora di inizio in formato ISO
-    data_ora_fine: '2026-05-12T13:00:00', // Data e ora di fine in formato ISO
-    note: 'Studiare con il gruppo di progetto'
+    titolo: 'Sviluppo Script Vision',
+    data: '2026-05-25', 
+    data_ora_inizio: '2026-05-25T09:00:00', 
+    data_ora_fine: '2026-05-25T13:00:00', 
+    note: 'Lavoro sui dataset in laboratorio'
   },
   {
     id: 's2',
-    titolo: 'Ripasso Serale pre-esame',
-    data: '2026-05-14',
-    data_ora_inizio: '2026-05-14T21:00:00',
-    data_ora_fine: '2026-05-14T23:30:00',
-    note: 'Focus totale, telefono spento'
+    titolo: 'Training Modello AI',
+    data: '2026-05-27',
+    data_ora_inizio: '2026-05-27T14:00:00',
+    data_ora_fine: '2026-05-27T18:00:00',
+    note: 'Far girare l\'algoritmo sul server dell\'università'
   }
 ];
 
 // 3.2 LISTA DELLE ATTIVITÀ E DEGLI OBIETTIVI DI STUDIO
+// NOTA: Ho impostato date attorno alla settimana del 25-31 Maggio 2026
 export const mockAttivita = [
   {
     id: 'a1',
-    corso_id: 'c1',
-    sessione_id: 's1',      // Collegato alla sessione "Mattinata in Biblioteca"
-    titolo: 'Test classificazione',
-    descrizione: 'Completare l\'esercizio sul dataset Breast Cancer.',
-    data_ora_inizio: '2026-05-12T10:00:00', // Inizio con data e ora in formato ISO
-    data_ora_scadenza: '2026-05-15T00:00:00', // Scadenza con data e ora in formato ISO
+    corso_id: 'c2',
+    sessione_id: 's1',
+    titolo: 'Test riconoscimento giallo',
+    descrizione: 'Testare lo script per isolare i palloncini gialli.',
+    data_ora_inizio: '2026-05-25T10:00:00', 
+    data_ora_scadenza: '2026-05-25T23:59:00', // SCADUTA (siamo oltre il 25)
     priorita: 'Alta',
     completata: false,
-    tempo_stimato_minuti: 120,
-    tempo_impiegato_minuti: 45,
-    note: 'Rivedere la teoria dal pdf prima di iniziare.',
+    tempo_stimato_minuti: 180, // 3 ore pianificate per il Lunedì (25 Maggio)
+    tempo_impiegato_minuti: 120,
+    note: 'Il filtro HSV dà problemi con la luce solare.',
   },
   {
     id: 'a2',
-    corso_id: 'c2', // Collegato al corso Java
-    sessione_id: null,      // Questa attività non è associata a una sessione specifica (possibilità)
-    titolo: 'Revisione codice di gruppo',
-    descrizione: 'Sistemare il branch GitHub e controllare il file PartitaDao.',
-    data_ora_inizio: '2026-05-08T14:00:00', // Inizio con data e ora in formato ISO
-    data_ora_scadenza: '2026-05-08T00:00:00', // Scadenza con data e ora in formato ISO
+    corso_id: 'c3', 
+    sessione_id: null,
+    titolo: 'Pulizia dataset simulatore',
+    descrizione: 'Rimuovere i log corrotti di TORCS.',
+    data_ora_inizio: '2026-05-26T14:00:00', 
+    data_ora_scadenza: '2026-05-26T23:59:00', // COMPLETATA (nonostante la data passata, andrà in fondo sbarrata)
     priorita: 'Media',
     completata: true,
-    tempo_stimato_minuti: 60,
-    tempo_impiegato_minuti: 60,
-    note: 'Ignorare la classe di test per il momento.',
+    tempo_stimato_minuti: 120, // 2 ore pianificate per il Martedì (26 Maggio)
+    tempo_impiegato_minuti: 120,
+    note: 'Chiedere a Rita se ha i file mancanti.',
   },
-
   {
     id: 'a3',
-    corso_id: 'c1',
-    sessione_id: 's1', //  Un'altra attività per la stessa sessione in biblioteca
-    titolo: 'Lettura Capitolo 4',
-    descrizione: 'Leggere le pagine da 150 a 180',
-    data_ora_inizio: '2026-05-12T00:00:00',
-    data_ora_scadenza: '2026-05-12T00:00:00',
+    corso_id: 'c3',
+    sessione_id: 's2', 
+    titolo: 'Ottimizzazione tempi sul giro',
+    descrizione: 'Regolare i parametri del Random Forest.',
+    data_ora_inizio: '2026-05-27T15:00:00',
+    data_ora_scadenza: '2026-05-29T23:59:00', // DA FARE / PENDENTE
+    priorita: 'Alta',
+    completata: false,
+    tempo_stimato_minuti: 240, // 4 ore pianificate per il Mercoledì (27 Maggio)
+    tempo_impiegato_minuti: 0,
+    note: 'Puntare a scendere sotto il minuto.',
+  },
+  {
+    id: 'a4',
+    corso_id: 'c2',
+    sessione_id: null, 
+    titolo: 'Stesura documentazione',
+    descrizione: 'Iniziare a scrivere il file README del progetto.',
+    data_ora_inizio: '2026-05-28T10:00:00',
+    data_ora_scadenza: '2026-05-30T23:59:00', // DA FARE / PENDENTE
     priorita: 'Bassa',
     completata: false,
-    tempo_stimato_minuti: 60,
+    tempo_stimato_minuti: 60, // 1 ora pianificata per il Giovedì (28 Maggio)
     tempo_impiegato_minuti: 0,
     note: '',
   }
+];
+
+// 4. LISTA DEI RISULTATI DI STUDIO (Timer Effettivo)
+// Inseriti dati per la settimana corrente (25-31 Maggio 2026) per testare il grafico a barre impilate
+export const mockTempiStudio = [
+  // LUNEDÌ (25 Maggio): 3 ore stimate (attività a1) -> 2 ore studiate. 
+  // Risultato grafico: Barra sotto blu scuro (2h), barra sopra azzurro chiaro (1h gap).
+  { id: '1', data: '2026-05-25', ore_studiate: 2 }, 
+
+  // MARTEDÌ (26 Maggio): 2 ore stimate (attività a2) -> 2 ore studiate.
+  // Risultato grafico: Barra interamente blu scuro (obiettivo perfettamente raggiunto).
+  { id: '2', data: '2026-05-26', ore_studiate: 2 }, 
+
+  // MERCOLEDÌ (27 Maggio): 4 ore stimate (attività a3) -> 5.5 ore studiate.
+  // Risultato grafico: Barra interamente blu scuro molto alta (superato l'obiettivo).
+  { id: '3', data: '2026-05-27', ore_studiate: 3.5 }, 
+  { id: '4', data: '2026-05-27', ore_studiate: 2.0 }, // Seconda sessione nello stesso giorno
+
+  // GIOVEDÌ (28 Maggio): 1 ora stimata (attività a4) -> 0 ore studiate (per ora).
+  // Risultato grafico: Barra interamente azzurra (ancora tutto da studiare).
+  // Non essendoci log, il motore grafico calcolerà 0 e metterà 1h rimanente.
 ];
