@@ -56,10 +56,16 @@ function TabNavigator() {
   const navigation = useNavigation<any>();
 
   // Funzione che chiude il modale e naviga verso la schermata scelta
-  const navigateAndClose = (screenName: string) => {
-    setAddMenuVisible(false);
-    navigation.navigate(screenName);
-  };
+  const navigateAndClose = (screenName: string, params?: any) => {
+  // 1. Chiudiamo prima il modale visivamente
+  setAddMenuVisible(false);
+  
+  // 2. Ritardiamo leggermente la navigazione per permettere allo Stack 
+  // di riprendere il controllo corretto della cronologia
+  setTimeout(() => {
+    navigation.navigate(screenName, params);
+  }, 100); // 100 millisecondi bastano a garantire la stabilità dello Stack
+};
 
   return (
     <>
