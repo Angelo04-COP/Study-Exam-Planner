@@ -141,7 +141,10 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
     const handleSave = () => {
         if(!title.trim()) return;
         
-        //invio dell'oggetto completo al componente padre
+        // Cerchiamo l'oggetto corso nell'array per recuperare il suo ID originale
+        const corsoTrovato = courses.find(c => c.name === selectedCourse);
+
+        // Invio dell'oggetto mappato e formattato al componente padre (_layout.tsx)
         onSave({
             title,
             desc,
@@ -165,10 +168,10 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
 
         });
         
-        //chiudiamo il modal dopo il salvataggio
+        // Chiudiamo il modal dopo l'invio dei dati
         onClose();
-    
     };
+    
 
     return(
         //il componente Modal è l'equivalente digitale di una finestra 
