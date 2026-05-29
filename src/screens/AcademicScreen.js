@@ -314,7 +314,6 @@ export default function AcademicScreen() {
                 onChangeText={setVotoInserito}
                 keyboardType="numeric"
                 maxLength={2}
-                placeholder="30"
               />
             </View>
 
