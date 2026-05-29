@@ -10,6 +10,7 @@ import Colors from '../constants/Colors';
 // si importano i dati fittizi definiti nel file mockData.js
 import { mockCorsi, mockSessioni, mockAttivita } from '../constants/mockData';
 
+const DURATA_SESSIONE_STANDARD = 120; //2 ore fisse per qualsiasi sessione
 
 
 /*
@@ -160,7 +161,7 @@ const PlanningScreen = () => {
             //     - priority: isNowSession ? 'Media' : taskData.priority: se l'elemento è diventato una sessione, la priorità viene forzata 
             //                a 'Media' (valore neutro); se invece è un'attività registra la priorità scelta
             //      - notes: taskData.notes e type: taskData.type aggiornano le note testuali e cambiano il macro-tipo se l'utente ha modificato la selezione;
-            //      - estimatedTime e actualTime: se l'elemento è una sessione, azzera i tempi a 0; se è un'attività, prende le ore digitate dall'utente nel form
+            //      - estimatedTime e actualTime: se l'elemento è una sessione, applica la durata standard di 120 minuti (2 ore) se è un'attività, prende le ore digitate dall'utente nel form
             //            le trasforma in numeri interi con parseInt e le moltiplica per 60 per salvarle sotto forma di minuti. L'operatore || 0 è un paracadute: se l'utente
             //              lascia il campo vuoto, assegna automaticamente 0 evitando che il valore diventi NaN (Not a number)
             //      - course_id: mockCorsi.find(...)?.id: cerca all'interno dell'array globale dei corsi quello il cui nome corrisponde
@@ -180,9 +181,9 @@ const PlanningScreen = () => {
                         //le sessioni hanno priorità fissa 'Media'
                         priority: isNowSession ? 'Media' : taskData.priority,
                         notes: taskData.notes,
-                        //i tempi servono solo per l'attività
-                        estimatedTime: isNowSession ? 0 : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
-                        actualTime: isNowSession ? 0 : Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                        //i tempi effettivi e stimati servono solo per l'attività; le sessioni hanno una durata standard fissa
+                        estimatedTime: isNowSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
+                        actualTime: isNowSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.actualTime) * 60) || 0,
                         type: taskData.type,
                         course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
                     };
@@ -203,8 +204,8 @@ const PlanningScreen = () => {
                 priority: isSession ? 'Media' : taskData.priority,
                 isCompleted: false,
                 //conversione in minuti
-                estimatedTime: isSession ? 0 : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
-                actualTime: isSession ? 0 :  Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                estimatedTime: isSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
+                actualTime: isSession ? DURATA_SESSIONE_STANDARD :  Math.round(parseFloat(taskData.actualTime) * 60) || 0,
                 type: taskData.type,
                 sessionType: taskData.sessionType,
                 notes: taskData.notes,
@@ -279,7 +280,7 @@ const PlanningScreen = () => {
     //Visualizzazione del componente PlanningScreen per la schermata di pianificazione dei task
     return(
         <ScrollView style = {styles.container}>
-            <Text style = {styles.screenTitle}>PIANIFICAZIONE STUDIO</Text>
+            <Text style = {styles.screenTitle}>PIANIFICAZIONE</Text>
 
             {/*Componente Calendar per pianificare un'attività
                 Il componente Calendar è il componente che permette di gestire calendari in React Native: 
@@ -316,8 +317,14 @@ const PlanningScreen = () => {
                     // All'interno della prop renderItem, si esegue una ricerca inversa. Il task infatti salva solo l'ID
                     // del corso, ma si vuole mostrare il nome del corso, per cui si utilizza il metodo .find() per recuperare l'oggetto 
                     // corso completo partendo dal codice ID
+                    // - scrollEnabled={false} disattiva lo Scrolling autonomo della FlatList, delegando l'intero scorrimento verticale
+                    //  alla ScrollView principale che fa da contenitore alla pagina
+                    // - nestedScrollEnabled={true}: permette al sistema operativo di calcolare correttamente i tocchi tra componenti nidificati,
+                    //   evitando conflitti di input e preservando l'esatto layout grafico
                     data={items.filter(item => item.date === selectedDate)}
                     keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    nestedScrollEnabled={true}
                     //si aggiunge un padding in fondo alla lista per non far finire i task sotto il tasto +
                     contentContainerStyle = {{ paddingBottom: 200 }}
                     renderItem={({item}) => {
@@ -381,10 +388,13 @@ const PlanningScreen = () => {
 
                                     )}
 
-                                    {/*Se si tratta di una sessione viene mostrato 'Sessione di studio', altrimenti 'Obiettivo: tempo stimato in min' 
-                                    in riferimento ad un'attività*/}
+                                    {/*Se si tratta di una sessione viene mostrata la tipologia con la durata standard fissa, altrimenti se è un'attività, 
+                                        viene mostrato il tempo stimato iniziale e, solo se l'attività è completata, viene mostrato anche il tempo effettivo */}
                                     <Text style = {styles.taskDetails}>
-                                        {item.type === 'sessione' ? `Sessione di ${item.sessionType || 'Studio'}` : `Obiettivo: ${item.estimatedTime} min`}
+                                        {item.type === 'sessione' 
+                                            ? `Sessione di ${item.sessionType || 'Studio'}: ${item.estimatedTime} min` 
+                                            : `Stimato: ${item.estimatedTime} min${item.isCompleted ? ` (Effettivo: ${item.actualTime} min)` : ''}`
+                                        }
 
                                     </Text>
                                     
@@ -456,7 +466,7 @@ const PlanningScreen = () => {
                         <View style={styles.modalAlertContent}>
                             <Text style={styles.modalAlertTitle}>Elimina</Text>
                             <Text style={styles.modalAlertText}>
-                                Rimuovere questa attivita dalla pianificazione?
+                                Rimuovere questa attività/sessione dalla pianificazione?
                             </Text>
 
                             <View style={styles.modalAlertButtons}>
@@ -491,7 +501,7 @@ const PlanningScreen = () => {
              style = {styles.fab}
              //quando si clicca il pulsante per l'inserimento del task, il Modal AddTaskModal si apre
             onPress = {() => setModalVisible(true)} >
-                <Icon name="plus" size={30} color = "blue"/>
+                <Icon name="plus" size={30} color = "white"/>
             </TouchableOpacity>
 
             {/*Modal di inserimento/modifica dei task: si passano i corsi reali dai mockData*/}
@@ -518,7 +528,16 @@ const PlanningScreen = () => {
 
 const styles = StyleSheet.create({
     container: {flex: 1, backgroundColor: Colors.background, paddingTop: 40},
-    screenTitle: {fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 10},
+    screenTitle: {
+        fontSize: 27, 
+        fontWeight: 'bold', 
+        color: '#2c2c2e',
+        textAlign: 'left',
+        alignSelf: 'flex-start',
+        marginTop: 25,
+        paddingHorizontal: 20,
+        marginBottom: 15
+    },
     todoContainer: {flex: 1, padding: 20},
     subTitle: {fontSize: 16, fontWeight: 'bold', marginBottom: 15, color: '#34495e'},
     taskCard: {
