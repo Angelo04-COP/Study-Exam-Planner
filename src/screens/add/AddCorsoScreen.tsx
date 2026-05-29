@@ -15,6 +15,10 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
   const [descrizione, setDescrizione] = useState('');
   const [votoDesiderato, setVotoDesiderato] = useState('');
   
+  // NUOVI STATI: Gestione delle date di inizio e fine corso
+  const [dataInizio, setDataInizio] = useState('2026-03-01'); // Valore di default standard
+  const [dataFine, setDataFine] = useState('2026-06-15');   // Valore di default standard
+  
   const semestre = "Secondo Semestre"; 
   const annoAccademico = "2025/2026";
 
@@ -26,14 +30,34 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
       setCfu(corsoDaModificare.cfu ? corsoDaModificare.cfu.toString() : '');
       setDescrizione(corsoDaModificare.descrizione || '');
       setVotoDesiderato(corsoDaModificare.voto_desiderato ? corsoDaModificare.voto_desiderato.toString() : '');
+      
+      // Carica le date salvate nel record esistente
+      setDataInizio(corsoDaModificare.data_inizio || '2026-03-01');
+      setDataFine(corsoDaModificare.data_fine || '2026-06-15');
     }
   }, [corsoDaModificare]);
+
+  // Funzione helper per calcolare lo stato in base alle date (Formato YYYY-MM-DD)
+  const calcolaStatoCorso = (inizio: string, fine: string): string => {
+    const oggiStr = new Date().toISOString().split('T')[0]; // Ottiene la data odierna in formato YYYY-MM-DD
+
+    if (inizio > oggiStr) {
+      return 'da iniziare';
+    } else if (inizio <= oggiStr && fine >= oggiStr) {
+      return 'in corso';
+    } else {
+      return 'completato';
+    }
+  };
 
   const handleSalvaCorso = async () => {
     if (!nome.trim()) {
       Alert.alert("Errore", "Il nome del corso è obbligatorio!");
       return;
     }
+
+    // Calcoliamo lo stato in modo dinamico basandoci sulle date inserite
+    const statoDinamico = calcolaStatoCorso(dataInizio.trim(), dataFine.trim());
 
     // Costruiamo l'oggetto preservando i dati storici se stiamo modificando
     const corsoSalvato = {
@@ -44,11 +68,14 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
       anno_accademico: corsoDaModificare ? corsoDaModificare.anno_accademico : annoAccademico,
       cfu: cfu ? parseInt(cfu, 10) : 0,
       descrizione: descrizione.trim(),
-      stato: corsoDaModificare ? corsoDaModificare.stato : 'in corso', 
+      
+      // APPLICAZIONE DELLA NUOVA LOGICA RICHIESTA
+      stato: statoDinamico, 
+      
       voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : 18,
       voto_ottenuto: corsoDaModificare ? corsoDaModificare.voto_ottenuto : null, 
-      data_inizio: corsoDaModificare ? corsoDaModificare.data_inizio : '2026-03-01',
-      data_fine: corsoDaModificare ? corsoDaModificare.data_fine : '2026-06-15',
+      data_inizio: dataInizio.trim(),
+      data_fine: dataFine.trim(),
       colore: corsoDaModificare ? corsoDaModificare.colore : '#177AD5', 
       anno: corsoDaModificare ? corsoDaModificare.anno : 1
     };
@@ -62,7 +89,7 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
         Alert.alert("Successo", `Corso "${nome}" salvato con successo!`);
       }
       
-      navigation.goBack(); // Chiude fluidamente il modale tornando alla Carriera
+      navigation.goBack();
     } catch (error) {
       Alert.alert("Errore", "Impossibile salvare il corso sul dispositivo.");
       console.error(error);
@@ -82,6 +109,14 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
 
       <Text style={styles.label}>Voto Desiderato (Esame)</Text>
       <TextInput style={styles.input} placeholder="Es: 28" keyboardType="numeric" value={votoDesiderato} onChangeText={setVotoDesiderato} />
+
+      {/* NUOVO CAMPO: DATA INIZIO */}
+      <Text style={styles.label}>Data Inizio Corso (YYYY-MM-DD)</Text>
+      <TextInput style={styles.input} placeholder="Es: 2026-03-01" value={dataInizio} onChangeText={setDataInizio} />
+
+      {/* NUOVO CAMPO: DATA FINE */}
+      <Text style={styles.label}>Data Fine Corso (YYYY-MM-DD)</Text>
+      <TextInput style={styles.input} placeholder="Es: 2026-06-15" value={dataFine} onChangeText={setDataFine} />
 
       <Text style={styles.label}>Descrizione del corso</Text>
       <TextInput style={[styles.input, styles.textArea]} placeholder="Cosa si studia..." multiline value={descrizione} onChangeText={setDescrizione} />
