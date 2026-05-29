@@ -1,6 +1,6 @@
 // src/constants/storage.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mockCorsi, mockEsami, mockAttivita } from './mockData';
+import { mockAttivita, mockCorsi, mockEsami } from './mockData';
 
 // Chiavi segrete univoche per salvare i dati nel disco del telefono
 const CHIAVE_CORSI = '@planner_corsi';
@@ -76,6 +76,32 @@ export const salvaNuovoCorso = async (nuovoCorso) => {
   }
 };
 
+export const eliminaCorso = async (idCorso) => {
+  try {
+    const attuali = await getCorsi();
+    const listaAggiornata = attuali.filter(corso => corso.id !== idCorso);
+    await AsyncStorage.setItem(CHIAVE_CORSI, JSON.stringify(listaAggiornata));
+    console.log("Corso eliminato dal telefono!");
+    return true;
+  } catch (error) {
+    console.error("Errore nell'eliminazione del corso:", error);
+    return false;
+  }
+};
+
+export const aggiornaCorso = async (corsoAggiornato) => {
+  try {
+    const attuali = await getCorsi();
+    const listaAggiornata = attuali.map(c => c.id === corsoAggiornato.id ? corsoAggiornato : c);
+    await AsyncStorage.setItem(CHIAVE_CORSI, JSON.stringify(listaAggiornata));
+    console.log("Corso aggiornato con successo nel database locale!");
+    return true;
+  } catch (error) {
+    console.error("Errore durante l'aggiornamento del corso:", error);
+    return false;
+  }
+};
+
 // ==========================================
 // OPERAZIONI PER GLI ESAMI / SCADENZE
 // ==========================================
@@ -98,5 +124,73 @@ export const salvaNuovoEsame = async (nuovoEsame) => {
     console.log("Nuovo esame salvato sul telefono!");
   } catch (error) {
     console.error("Errore nel salvataggio dell'esame:", error);
+  }
+};
+
+export const eliminaEsame = async (idEsame) => {
+  try {
+    const attuali = await getEsami();
+    const listaAggiornata = attuali.filter(esame => esame.id !== idEsame);
+    await AsyncStorage.setItem(CHIAVE_ESAMI, JSON.stringify(listaAggiornata));
+    console.log("Esame eliminato dal telefono!");
+    return true;
+  } catch (error) {
+    console.error("Errore nell'eliminazione dell'esame:", error);
+    return false;
+  }
+};
+
+export const aggiornaEsame = async (esameAggiornato) => {
+  try {
+    const attuali = await getEsami();
+    const listaAggiornata = attuali.map(e => e.id === esameAggiornato.id ? esameAggiornato : e);
+    await AsyncStorage.setItem(CHIAVE_ESAMI, JSON.stringify(listaAggiornata));
+    console.log("Esame aggiornato con successo nel database locale!");
+    return true;
+  } catch (error) {
+    console.error("Errore durante l'aggiornamento dell'esame:", error);
+    return false;
+  }
+};
+
+// src/constants/storage.js
+
+export const verbalizzaEsitoEsame = async (idEsame, corsoId, esito, voto = null) => {
+  try {
+    // 1. Aggiorniamo lo stato dell'Esame
+    const esamiAttuali = await getEsami();
+    const esamiAggiornati = esamiAttuali.map(esame => {
+      if (esame.id === idEsame) {
+        return {
+          ...esame,
+          stato: esito === 'SUPERATO' ? 'superato' : 'rifiutato',
+          voto_risultato: esito === 'SUPERATO' ? parseInt(voto, 10) : null
+        };
+      }
+      return esame;
+    });
+    await AsyncStorage.setItem(CHIAVE_ESAMI, JSON.stringify(esamiAggiornati));
+
+    // 2. Se l'esame è superato, aggiorniamo automaticamente il Corso associato
+    if (esito === 'SUPERATO' && corsoId) {
+      const corsiAttuali = await getCorsi();
+      const corsiAggiornati = corsiAttuali.map(corso => {
+        if (corso.id === corsoId) {
+          return {
+            ...corso,
+            stato: 'completato',
+            voto_ottenuto: parseInt(voto, 10)
+          };
+        }
+        return corso;
+      });
+      await AsyncStorage.setItem(CHIAVE_CORSI, JSON.stringify(corsiAggiornati));
+    }
+
+    console.log("Verbalizzazione completata con successo!");
+    return true;
+  } catch (error) {
+    console.error("Errore durante la verbalizzazione:", error);
+    return false;
   }
 };

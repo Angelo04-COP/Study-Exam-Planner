@@ -1,16 +1,14 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // Usiamo le stesse icone della pagina precedente
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function CourseDetailScreen({ route, navigation }) {
-  // 1. Recuperiamo i dati. 
-  // 'courseData' è l'oggetto del corso (o dell'esame) che abbiamo passato dalla card
-  // 'isExam' è un booleano che ci dice se abbiamo cliccato su un esame invece che su un corso
+  // 1. Recuperiamo i dati passati dalla navigazione
   const { courseData, isExam } = route.params;
 
-  // 2. Helper per il colore del badge (riciclato dalla pagina precedente per coerenza)
+  // 2. Helper per il colore del badge
   const getBadgeColor = (stato) => {
-    if (!stato) return '#94a3b8'; // default grigio
+    if (!stato) return '#94a3b8'; 
     const s = stato.toLowerCase();
     if (s === 'completato' || s === 'superato') return '#4CAF50';
     if (s === 'in corso') return '#177AD5';
@@ -22,7 +20,6 @@ export default function CourseDetailScreen({ route, navigation }) {
 
       {/* HEADER: Titolo e Badge dello stato */}
       <View style={styles.header}>
-        {/* Gestiamo sia il caso in cui clicchiamo un corso (.nome) sia un esame (.titolo) */}
         <Text style={styles.title}>{courseData.nome || courseData.titolo}</Text>
 
         {courseData.stato && (
@@ -37,7 +34,7 @@ export default function CourseDetailScreen({ route, navigation }) {
 
         {/* Riga Docente / Tipologia */}
         <View style={styles.infoRow}>
-          <Ionicons name="person-outline" size={20} color="#177AD5" />
+          <Ionicons name={isExam ? "layers-outline" : "person-outline"} size={20} color="#177AD5" />
           <View style={styles.textContainer}>
             <Text style={styles.label}>{isExam ? 'Tipologia' : 'Docente'}</Text>
             <Text style={styles.value}>{courseData.docente || courseData.tipologia || 'Non specificato'}</Text>
@@ -46,23 +43,91 @@ export default function CourseDetailScreen({ route, navigation }) {
 
         <View style={styles.divider} />
 
-        {/* Riga CFU / Data */}
+        {/* Riga CFU / Data Scadenza */}
         <View style={styles.infoRow}>
           <Ionicons name={isExam ? "calendar-outline" : "ribbon-outline"} size={20} color="#177AD5" />
           <View style={styles.textContainer}>
-            <Text style={styles.label}>{isExam ? 'Data Scadenza' : 'Crediti Formativi'}</Text>
+            <Text style={styles.label}>{isExam ? "Data dell'Appello" : 'Crediti Formativi'}</Text>
             <Text style={styles.value}>{courseData.cfu ? `${courseData.cfu} CFU` : (courseData.data || 'Nessuna data')}</Text>
           </View>
         </View>
 
-        {/* Mostriamo il voto solo se esiste */}
+        {/* ==========================================
+            CAMPI SPECIFICI PER I CORSI (!isExam)
+            ========================================== */}
+        {!isExam && (
+          <>
+            <View style={styles.divider} />
+            {/* Semestre e Anno Accademico */}
+            <View style={styles.infoRow}>
+              <Ionicons name="time-outline" size={20} color="#177AD5" />
+              <View style={styles.textContainer}>
+                <Text style={styles.label}>Periodo</Text>
+                <Text style={styles.value}>
+                  {courseData.semestre || 'Semestre N/D'} ({courseData.anno_accademico || 'Anno N/D'})
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+            {/* Date Inizio e Fine */}
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-number-outline" size={20} color="#177AD5" />
+              <View style={styles.textContainer}>
+                <Text style={styles.label}>Durata Corso</Text>
+                <Text style={styles.value}>
+                  {courseData.data_inizio || 'N/D'} ➔ {courseData.data_fine || 'N/D'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Voto Obiettivo (solo se presente) */}
+            {courseData.voto_desiderato && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.infoRow}>
+                  <Ionicons name="star-outline" size={20} color="#FF9800" />
+                  <View style={styles.textContainer}>
+                    <Text style={styles.label}>Voto Obiettivo</Text>
+                    <Text style={[styles.value, { color: '#FF9800', fontWeight: 'bold' }]}>
+                      {courseData.voto_desiderato}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+          </>
+        )}
+
+        {/* ==========================================
+            CAMPI SPECIFICI PER GLI ESAMI (isExam)
+            ========================================== */}
+        {isExam && courseData.priorita && (
+          <>
+            <View style={styles.divider} />
+            {/* Priorità */}
+            <View style={styles.infoRow}>
+              <Ionicons name="alert-circle-outline" size={20} color={courseData.priorita === 'Alta' ? '#FF5252' : '#177AD5'} />
+              <View style={styles.textContainer}>
+                <Text style={styles.label}>Priorità</Text>
+                <Text style={[styles.value, { color: courseData.priorita === 'Alta' ? '#FF5252' : '#333' }]}>
+                  {courseData.priorita}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* ==========================================
+            ESITO (Mostrato sia per Esami che per Corsi se esiste)
+            ========================================== */}
         {(courseData.voto_ottenuto || courseData.voto_risultato) && (
           <>
             <View style={styles.divider} />
             <View style={styles.infoRow}>
               <Ionicons name="school-outline" size={20} color="#4CAF50" />
               <View style={styles.textContainer}>
-                <Text style={styles.label}>Esito</Text>
+                <Text style={styles.label}>Esito Finale</Text>
                 <Text style={[styles.value, { color: '#4CAF50', fontWeight: 'bold' }]}>
                   {courseData.voto_ottenuto || courseData.voto_risultato}
                 </Text>
@@ -72,11 +137,13 @@ export default function CourseDetailScreen({ route, navigation }) {
         )}
       </View>
 
-      {/* SEZIONE DESCRIZIONE / NOTE (Opzionale per il futuro) */}
+      {/* SEZIONE DESCRIZIONE / NOTE */}
       <View style={styles.notesSection}>
-        <Text style={styles.notesTitle}>Note e Dettagli</Text>
+        <Text style={styles.notesTitle}>{isExam ? 'Note e Promemoria' : 'Descrizione del Corso'}</Text>
         <Text style={styles.notesText}>
-          {courseData.descrizione || "Nessuna nota aggiuntiva per questo elemento. In futuro, qui potrai inserire gli appunti del corso, i link al materiale didattico o gli obiettivi specifici da raggiungere."}
+          {isExam 
+            ? (courseData.note || "Nessuna nota aggiuntiva per questo appello.")
+            : (courseData.descrizione || "Nessuna descrizione disponibile per questo corso.")}
         </Text>
       </View>
 
@@ -90,7 +157,7 @@ export default function CourseDetailScreen({ route, navigation }) {
         <Text style={styles.buttonText}>Torna alla Carriera</Text>
       </TouchableOpacity>
 
-      <View style={{ height: 40 }} /> {/* Spazio in fondo per lo scroll */}
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }

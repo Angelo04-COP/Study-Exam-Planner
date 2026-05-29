@@ -70,7 +70,7 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
       Alert.alert("Successo", "Pianificazione salvata con successo!");
       
       // PATTERN DELLE SLIDE: Torniamo alla tab principale del Planner (Slide pag. 14, 25)[cite: 2]
-      navigation.navigate('Planner');
+      navigation.navigate('MainTabs', { screen: 'Planner' });
     } catch (e) {
       Alert.alert("Errore", "Impossibile salvare l'attività nel dispositivo.");
     }
@@ -79,7 +79,7 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
   // Funzione invocata se l'utente clicca fuori o annulla dal pop-up[cite: 2]
   const handleClose = () => {
     setModalVisibile(false);
-    navigation.navigate('Planner'); // Rispedisce l'utente alla home del Planner[cite: 2]
+    navigation.navigate('MainTabs', { screen: 'Planner' }); // Rispedisce l'utente alla home del Planner[cite: 2]
   };
 
   // Durante il caricamento asincrono mostriamo un indicatore nativo di attesa[cite: 2]
@@ -91,12 +91,13 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
     );
   }
 
+  const dataAttualeOggi = new Date().toISOString().split('T')[0];
   return (
     <View style={styles.container}>
-      {/* Ci riferiamo direttamente al componente del tuo amico passandogli le proprietà necessarie */}
+      {/* Ci riferiamo direttamente al componente passandogli la data dinamica di oggi */}
       <AddTaskModal 
         isVisible={modalVisibile}
-        date="2026-05-28" // Agganciabile dinamicamente alla data del calendario[cite: 2]
+        date={dataAttualeOggi} // <-- Sostituito il valore fisso con la costante dinamica
         courses={corsi} 
         onClose={handleClose}
         onSave={handleSaveTask}
