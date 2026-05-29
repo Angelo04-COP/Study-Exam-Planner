@@ -21,10 +21,14 @@ const DURATA_SESSIONE_STANDARD = 120; //2 ore fisse per qualsiasi sessione
 type StudyItem = {
     id: string;
     title: string;
-    desc?: string;
+    desc?: string;         //proprietà opzionale (si noti il ? )
     course_id?: string; //proprietà opzionale (si noti il ? )
     session_id?: string | null; //proprietà opzionale (si noti il ?)
     date: string;
+    durationUnit?: 'ore' | 'giorni' //proprietà opzionale (si noti il ? )
+    startDate?: string;       //proprietà opzionale (si noti il ?)
+    endDate?: string;         //proprietà opzionale (si noti il ? )
+    estimatedDays?: number;   //proprietà opzionale (si noti il ?)
     priority: string;
     sessionType?: string;    //proprietà opzionale (si noti il ?)
     isCompleted: boolean;
@@ -172,6 +176,7 @@ const PlanningScreen = () => {
             setItems(items.map(item => {
                 if(item.id === taskToEdit.id) {
                     const isNowSession = taskData.type === 'sessione';
+                    const isDays = taskData.durationUnit === 'giorni';
                     return {
                         ...item, 
                         title: taskData.title,
@@ -181,9 +186,18 @@ const PlanningScreen = () => {
                         //le sessioni hanno priorità fissa 'Media'
                         priority: isNowSession ? 'Media' : taskData.priority,
                         notes: taskData.notes,
-                        //i tempi effettivi e stimati servono solo per l'attività; le sessioni hanno una durata standard fissa
-                        estimatedTime: isNowSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
-                        actualTime: isNowSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                        //calcolo dei tempi in modalità modifica
+                        estimatedTime: isNowSession
+                            ? (isDays ? 0 : (Math.round(parseFloat(taskData.estimatedTime) * 60) || 0))
+                            : (Math.round(parseFloat(taskData.estimatedTime) * 60) || 0),
+                        actualTime: !isNowSession && taskData.actualTime
+                            ?  (Math.round(parseFloat(taskData.actualTime) * 60) || 0)
+                            : 0,
+                        durationUnit: taskData.type === 'sessione' ? (taskData.durationUnit || 'ore') : undefined,
+                        startDate: taskData.startDate,
+                        endDate: taskData.endDate,
+                        estimatedDays: taskData.estimatedDays,
+                        
                         type: taskData.type,
                         course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
                     };
@@ -196,6 +210,7 @@ const PlanningScreen = () => {
         } else {
             //Logica di INSERIMENTO DINAMICA
             const isSession = taskData.type === 'sessione';
+            const isDays = taskData.durationUnit === 'giorni';
             const newItem: StudyItem = {
                 id: Date.now().toString(),
                 title: taskData.title,
@@ -203,9 +218,17 @@ const PlanningScreen = () => {
                 desc: taskData.desc,
                 priority: isSession ? 'Media' : taskData.priority,
                 isCompleted: false,
-                //conversione in minuti
-                estimatedTime: isSession ? DURATA_SESSIONE_STANDARD : Math.round(parseFloat(taskData.estimatedTime) * 60) || 0,
-                actualTime: isSession ? DURATA_SESSIONE_STANDARD :  Math.round(parseFloat(taskData.actualTime) * 60) || 0,
+                //calcolo dei tempi in modalità INSERIMENTO
+                estimatedTime: isSession
+                    ? (isDays ? 0 : (Math.round(parseFloat(taskData.estimatedTime) * 60) || 0))
+                    : (Math.round(parseFloat(taskData.estimatedTime) * 60) || 0),
+                actualTime: !isSession && taskData.actualTime
+                    ?  (Math.round(parseFloat(taskData.actualTime) * 60) || 0)
+                    : 0,
+                durationUnit: taskData.type === 'sessione' ? (taskData.durationUnit || 'ore') : undefined,
+                startDate: taskData.startDate,
+                endDate: taskData.endDate,
+                estimatedDays: taskData.estimatedDays,
                 type: taskData.type,
                 sessionType: taskData.sessionType,
                 notes: taskData.notes,
@@ -391,10 +414,13 @@ const PlanningScreen = () => {
                                     {/*Se si tratta di una sessione viene mostrata la tipologia con la durata standard fissa, altrimenti se è un'attività, 
                                         viene mostrato il tempo stimato iniziale e, solo se l'attività è completata, viene mostrato anche il tempo effettivo */}
                                     <Text style = {styles.taskDetails}>
-                                        {item.type === 'sessione' 
-                                            ? `Sessione di ${item.sessionType || 'Studio'}: ${item.estimatedTime} min` 
-                                            : `Stimato: ${item.estimatedTime} min${item.isCompleted ? ` (Effettivo: ${item.actualTime} min)` : ''}`
-                                        }
+                                        {item.type === 'sessione' ? (
+                                            item.durationUnit === 'giorni' 
+                                            ? `Sessione di ${item.sessionType || 'Studio'}: dal ${item.startDate} al ${item.endDate} (${item.estimatedDays} gg)` 
+                                            : `Sessione di ${item.sessionType || 'Studio'}: ${item.estimatedTime} min`
+                                        ) : (
+                                            `Stimato: ${item.estimatedTime} min${item.isCompleted ? ` (Effettivo: ${item.actualTime} min)` : ''}`
+                                        )}
 
                                     </Text>
                                     

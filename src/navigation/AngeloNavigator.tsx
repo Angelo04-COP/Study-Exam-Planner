@@ -5,15 +5,14 @@ import { useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
+import CourseDetailScreen from '../screens/CourseDetailScreen';
 // 1. IMPORT DELLE 4 SCHERMATE PRINCIPALI DEI TAB
 import AcademicScreen from '../screens/AcademicScreen';
 import DashboardScreen from '../screens/DashboardScreen'; // <-- Aggiunto il Cruscotto!
 import PlanningScreen from '../screens/PlanningScreen';
 import TimerScreen from '../screens/TimerScreen';
 
-// 2. IMPORT DEI TUOI SCHERMI (Focalizzati sul tasto "+")
-import AddScreen from '../screens/AddScreen'; 
+// 2. IMPORT DELLE SCHERMATE DI AGGIUNTA (Modali della collega)
 import AddCorsoScreen from '../screens/add/AddCorsoScreen';
 import AddEsameScreen from '../screens/add/AddEsameScreen';
 import AddSceltaScreen from '../screens/add/AddSceltaScreen';
@@ -63,11 +62,25 @@ function TabNavigator() {
   };
 
   return (
-    <Tab.Navigator 
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
+    <>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarShowLabel: false, // Rimuove il testo sotto le icone per un look più moderno
+          tabBarStyle: {
+            height: 60,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            backgroundColor: '#ffffff',
+            position: 'absolute', // Necessario per far sporgere bene il tasto fluttuante
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 5,
+            elevation: 10,
+          },
+          tabBarIcon: ({ focused, color }) => {
+            let iconName: any;
 
             if (route.name === 'Dashboard') {
               iconName = focused ? 'home' : 'home-outline';
@@ -90,8 +103,8 @@ function TabNavigator() {
         <Tab.Screen name="Planner" component={PlanningScreen} />
 
         {/* TAB 3: IL TASTO PIÙ CENTRALE */}
-        <Tab.Screen 
-          name="AddTab" 
+        <Tab.Screen
+          name="AddTab"
           component={View} // Usiamo una View vuota perché intercettiamo il click con onPress
           options={{
             tabBarIcon: () => (
@@ -101,7 +114,7 @@ function TabNavigator() {
             tabBarButton: (props) => (
               <CustomTabBarButton {...props} onPress={() => setAddMenuVisible(true)} />
             )
-          }} 
+          }}
         />
 
         {/* TAB 4 e 5 */}
@@ -111,27 +124,27 @@ function TabNavigator() {
 
       {/* --- IL MODALE DI SCELTA (Si apre solo cliccando il +) --- */}
       <Modal visible={isAddMenuVisible} transparent={true} animationType="fade">
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setAddMenuVisible(false)} // Chiude cliccando fuori
         >
           <View style={styles.modalMenu}>
-            
+
             <TouchableOpacity style={styles.menuItem} onPress={() => navigateAndClose('AddCorso')}>
               <Ionicons name="book-outline" size={24} color="#177AD5" />
               <Text style={styles.menuText}>Aggiungi Corso</Text>
             </TouchableOpacity>
-            
+
             <View style={styles.divider} />
-            
+
             <TouchableOpacity style={styles.menuItem} onPress={() => navigateAndClose('AddEsame')}>
               <Ionicons name="document-text-outline" size={24} color="#177AD5" />
               <Text style={styles.menuText}>Aggiungi Esame</Text>
             </TouchableOpacity>
 
             <View style={styles.divider} />
-            
+
             <TouchableOpacity style={styles.menuItem} onPress={() => navigateAndClose('AddScelta')}>
               <Ionicons name="list-outline" size={24} color="#177AD5" />
               <Text style={styles.menuText}>Pianifica Attività</Text>
@@ -148,17 +161,27 @@ function TabNavigator() {
 export default function AppNavigator() {
   return (
     <Stack.Navigator>
-      {/* La schermata base contiene l'intera botoniera dei Tab */}
-      <Stack.Screen 
-        name="MainTabs" 
-        component={TabNavigator} 
-        options={{ headerShown: false }} 
+      {/* La schermata base contiene l'intera bottoniera dei Tab */}
+      <Stack.Screen
+        name="MainTabs"
+        component={TabNavigator}
+        options={{ headerShown: false }}
       />
-      
-      {/* Le tue tre schermate di aggiunta (si aprono sopra ai Tab a tutto schermo) */}
-      <Stack.Screen name="AddCorso" component={AddCorsoScreen} options={{ title: 'Nuovo Corso' }} />
-      <Stack.Screen name="AddEsame" component={AddEsameScreen} options={{ title: 'Nuovo Esame' }} />
-      <Stack.Screen name="AddScelta" component={AddSceltaScreen} options={{ title: 'Pianifica Attività' }} />
+
+      {/* Le tre schermate di aggiunta. */}
+      <Stack.Screen name="AddCorso" component={AddCorsoScreen} options={{ title: 'Nuovo Corso', presentation: 'modal' }} />
+      <Stack.Screen name="AddEsame" component={AddEsameScreen} options={{ title: 'Nuovo Esame', presentation: 'modal' }} />
+      <Stack.Screen name="AddScelta" component={AddSceltaScreen} options={{ title: 'Pianifica', presentation: 'modal' }} />
+
+      {/* AGGIUNGI LA TUA NUOVA SCHERMATA QUI: */}
+      <Stack.Screen
+        name="CourseDetail"
+        component={CourseDetailScreen}
+        options={({ route }: any) => ({
+          title: route.params?.isExam ? 'Dettaglio Esame' : 'Dettaglio Corso',
+        })}
+
+      />
     </Stack.Navigator>
   );
 }

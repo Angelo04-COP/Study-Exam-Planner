@@ -49,6 +49,14 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
     const [priority, setPriority] = useState<'Bassa' | 'Media' | 'Alta'>('Media');
     //tipo di sessione
     const [sessionType, setSessionType] = useState('Studio');
+    //stato per identificare se la durata di una sessione è espressa in giorni o in ore
+    const [durationUnit, setDurationUnit] = useState<'giorni' | 'ore'>('giorni');
+    //stato per la data di inizio sessione (se la durata è espressa in giorni)
+    const [startDate, setStartDate] = useState<string>(date);
+    //stato per data di fine sessione (se la durata è espressa in giorni)
+    const [endDate, setEndDate] = useState<string>('');
+    //stato per esprimere la durata di una sessione in giorni
+    const [estDays, setEstDays] = useState<string>('');
     //tempo stimato
     const [estTime, setEstTime] = useState('');
     //tempo effettivamente impiegato
@@ -61,6 +69,13 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
 
 
     //si imposta l'effetto useEffect per intercettare l'apertura e il tipo di operazione (INSERIMENTO O MODIFICA)
+    /*L'array delle dipendenze in fondo alle parentesi quadre specifica quando far ripartire lo useEffect.
+         1) taskToEdit: intercetta se stiamo passando da modalita INSERIMENTO a modalità MODIFICA (e viceversa); 
+         2)  isVisible: riesegue il codice ogni volta che il modale si apre o si chiude, garantendo il reset dei campi;
+         3) date: fondamentale per la reattività dell'interfaccia Utente. Se l'utente cambia giorno sul calendario, 
+               lo useEffect si attiva immediatamente e sincronizza lo stato 'startDate' con la nuova data selezionata, evitando
+               disallineamenti in modalità inserimento 
+    */
     useEffect(() => {
         if (taskToEdit) {
             //Modalità MODIFICA: i valori salvati vengono ripristinati
@@ -70,6 +85,10 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             setPriority(taskToEdit.priority);
             setNotes(taskToEdit.notes || '');
             setSessionType(taskToEdit.sessionType || 'Nessuna');
+            setDurationUnit(taskToEdit.durationUnit || 'ore');
+            setStartDate(taskToEdit.startDate || taskToEdit.date);
+            setEndDate(taskToEdit.endDate || '');
+            setEstDays(taskToEdit.estimatedDays ? taskToEdit.estimatedDays.toString() : '');
 
             //i tempi effettivi e reali vengono pre-compilati solo se l'elemento è un'attività
             if(taskToEdit.type === 'attivita') {
@@ -78,7 +97,16 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                 setEstTime(taskToEdit.estimatedTime ? (taskToEdit.estimatedTime / 60).toString() : '');
                 setActTime(taskToEdit.actualTime ? (taskToEdit.actualTime / 60).toString() : '');
             }else {
-                setEstTime('');
+                //gestione per il macro-tipo 'sessione'
+                if((taskToEdit.durationUnit || 'ore') === 'ore'){
+                    //se la sessione è in ORE, si recupera e si ripristina la durata corretta
+                    setEstTime(taskToEdit.estimatedTime ? (taskToEdit.estimatedTime / 60).toString() : '');
+                }else{
+                    //se la sessione è in GIORNI, la casella delle ore rimane giustamente vuota
+                    setEstTime('');
+                }
+
+                //le sessioni non prevedono tempo effettivo
                 setActTime('');
 
             }
@@ -97,6 +125,10 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             setType('attivita');
             setPriority('Media');
             setSessionType('Nessuna');
+            setDurationUnit('ore');
+            setStartDate(date);
+            setEndDate('');
+            setEstDays('');
             setEstTime('');
             setActTime('');
             setNotes('');
@@ -114,23 +146,26 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
 
         // Invio dell'oggetto mappato e formattato al componente padre (_layout.tsx)
         onSave({
-            id: taskToEdit?.id || 'a' + Date.now(), // Mantiene l'ID se modifica, altrimenti ne crea uno nuovo
-            corso_id: corsoTrovato ? corsoTrovato.id : null,
-            sessione_id: null,
-            titolo: title,
-            descrizione: desc,
-            // Gestione date: mantiene le vecchie se in modifica, altrimenti imposta la data del calendario
-            data_ora_inizio: taskToEdit?.data_ora_inizio || `${date}T14:00:00`, 
-            data_ora_scadenza: taskToEdit?.data_ora_scadenza || `${date}T23:59:00`,
-            priorita: type === 'sessione' ? 'Media' : priority,
-            completata: taskToEdit?.completata || false,
-            // Convertiamo le ORE inserite nei TextInput in MINUTI per il database locale
-            tempo_stimato_minuti: estTime ? Math.round(parseFloat(estTime) * 60) : 0,
-            tempo_impiegato_minuti: actTime ? Math.round(parseFloat(actTime) * 60) : 0,
-            note: notes,
-            // Queste due proprietà servono al Layout padre per la logica visiva e i reindirizzamenti
-            type,
+            title,
+            desc,
+            course: selectedCourse,
+            date: type === 'sessione' && durationUnit === 'giorni' ? startDate : date, 
+            //le sessioni usano un valore neutro di default per la priorità
+            priority: type === 'sessione' ? 'Media' : priority,
+            //si passa il valore calcolato di sessionType se il macro-tipo è 'sessione'
+            // OPPURE se è un'attivita che ha una sessione associata (diversa da 'Nessuna')
             sessionType: sessionType === 'Nessuna' ? undefined : sessionType,
+            durationUnit: type === 'sessione' ? durationUnit : undefined,
+            startDate: type === 'sessione' && durationUnit === 'giorni' ? startDate : undefined,
+            endDate: type === 'sessione' && durationUnit === 'giorni' ? endDate: undefined,
+            estimatedDays: type === 'sessione' && durationUnit === 'giorni' ? (parseInt(estDays) || 1) : undefined,
+            estimatedTime: estTime,
+            actualTime: actTime,
+            notes,
+            //comunica se salvare come attività o sessione
+            type,
+            isCompleted: false
+
         });
         
         // Chiudiamo il modal dopo l'invio dei dati
@@ -194,10 +229,13 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
 
                 <Text style = {styles.label}> DETTAGLI PIANIFICAZIONE </Text>
                 {/*Input per il titolo
-                    -la props onChangeText è un evento che viene attivato ogni volta che l'utente digita o cancella
-                    un caratter
+                    -la props onChangeText è una funzione di callback (gestore di eventi) che viene invocata automaticamente dal sistema
+                    ogni singola volta che il testo all'interno del textInput cambia, ovvero quando l'utente digita un nuovo carattere,
+                      ne cancella uno esistente o incolla del testo. Poiché onChangeText={setTitle}, la stringa scritta nel TextInput viene inoltrata 
+                      istantaneamente alla state setter function setTitle. Lo stato title si aggiorna, forzando un micor-rendering che mostra il valore aggiornato
+                      nel campo grazie a value={title}
                     - la props value rappresenta il contenuto attuale del campo di testo; solitamente è collegato
-                    a una variabile di stato
+                    a una variabile di stato (in questo caso title)
 
                 */}
                 <TextInput placeholder = "Titolo" placeholderTextColor = "#7c7c80" style={styles.input} onChangeText={setTitle} value={title} />
@@ -205,22 +243,50 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                 {/*Input per la descrizione*/}
                 <TextInput placeholder="Descrizione breve" placeholderTextColor = "#7c7c80" style={styles.input} onChangeText = {setDesc} value={desc} />
 
+                {/* Selettore dell'unità di durata per le sessioni, mostrato solo se type === 'sessione' */}
+                { type === 'sessione' && (
+                    <View style={{ marginBottom: 15 }}>
+                        <Text style={[styles.label, {marginTop: 5, marginBottom: 5}]}>DURATA SESSIONE</Text>
+                        <View style = {styles.typeRow}>
+                            <TouchableOpacity
+                                // se l'utente ha selezionato 'In ore' , viene applicato, oltre a styles.typeBtn (lo stile base), anche
+                                // lo stile typeBtnActive; {height : 35} è un inline style fisso
+                                style = {[styles.typeBtn, durationUnit === 'ore' && styles.typeBtnActive, {height: 35}]}
+                                onPress={() => setDurationUnit('ore')}
+                            >
+                                <Text style={{ color: durationUnit === 'ore' ? 'white' : 'black', fontSize: 13}}>In Ore</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                 // se l'utente ha selezionato 'In giorni' , viene applicato, oltre a styles.typeBtn (lo stile base), anche
+                                // lo stile typeBtnActive; {height : 35} è un inline style fisso
+                               style={[styles.typeBtn, durationUnit === 'giorni' && styles.typeBtnActive, { height: 35 }]}
+                               onPress={() => setDurationUnit('giorni')}
+                            >
+                                <Text style={{ color: durationUnit === 'giorni' ? 'white' : 'black', fontSize: 13}}>In Giorni</Text>   
+
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
                 {/*Input per tempo stimato ed effettivo dell'attività: i tempi stimati ed effettivi compaiono solo per
                 le attività; in particolare: 
                     - il tempo stimato compare sempre se il tipo è 'attività';
                     - il tempo effettivo compare SOLO se il tipo è 'attività' E siamo in modalità modifica, poiché all'atto
-                        del primo inserimento il tempo reale non è ancora quantificabile*/}
-                {type === 'attivita' && (
-                <View style = {styles.row}>
-                    <TextInput 
-                        placeholder="Tempo Stimato (h)" 
-                        placeholderTextColor = "#7c7c80"
-                        keyboardType="numeric" 
-                        style={[styles.input, {flex: 1, marginRight: 5 }]} 
-                        onChangeText={setEstTime} 
-                        value={estTime}/>
+                        del primo inserimento il tempo reale non è ancora quantificabile
+                    
+                  Caso A: è un'attività o una sessione che espressa in ORE*/}
+                {((type === 'attivita') || (type === 'sessione' && durationUnit === 'ore')) && (
+                    <View style = {styles.row}>
+                        <TextInput 
+                            placeholder={type === 'attivita' ? "Tempo Stimato (h)" : "Durata Sessione (h)"} 
+                            placeholderTextColor = "#7c7c80"
+                            keyboardType="numeric" 
+                            style={[styles.input, {flex: 1, marginRight: 5 }]} 
+                            onChangeText={setEstTime} 
+                            value={estTime}/>
 
-                    {taskToEdit && (
+                    {type === 'attivita' && taskToEdit && (
                         <TextInput 
                             placeholder="Tempo Effettivo (h)" 
                             placeholderTextColor = "#7c7c80"
@@ -229,8 +295,36 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                             onChangeText={setActTime} 
                             value={actTime} />
                     )}
-                </View>
+                    </View>
                 )}  
+
+                {/*Caso B: è una sessione espressa in GIORNI*/}
+                {type === 'sessione' && durationUnit === 'giorni' && (
+                    <View style={styles.row}>
+                        <TextInput
+                            placeholder="Data Inizio (AAAA-MM-GG)"
+                            placeholderTextColor="#7c7c80"
+                            style={[styles.input, { flex: 1, marginRight: 5}]}
+                            onChangeText={setStartDate}
+                            value={startDate}
+                            />
+                        <TextInput
+                            placeholder="Data Fine (AAAA-MM-GG)"
+                            placeholderTextColor="#7c7c80"
+                            style={[styles.input, {flex: 1}]}
+                            onChangeText={setEndDate}
+                            value={endDate}
+                        />  
+                        <TextInput
+                            placeholder="Durata Sessione (giorni)"
+                            placeholderTextColor="#7c7c80"
+                            keyboardType="numeric"
+                            style={styles.input}
+                            onChangeText={setEstDays}
+                            value={estDays}
+                        />       
+                    </View>
+                )}
                 {/*Input per le note aggiuntive*/}
                 <TextInput placeholder="Note aggiuntive" placeholderTextColor = "#7c7c80" multiline style={[styles.input, {height: 60}]} onChangeText={setNotes} value = {notes}/>
 
