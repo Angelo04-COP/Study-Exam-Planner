@@ -16,8 +16,8 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
   const [votoDesiderato, setVotoDesiderato] = useState('');
   
   // NUOVI STATI: Gestione delle date di inizio e fine corso
-  const [dataInizio, setDataInizio] = useState('2026-03-01'); // Valore di default standard
-  const [dataFine, setDataFine] = useState('2026-06-15');   // Valore di default standard
+  const [dataInizio, setDataInizio] = useState(''); // Valore di default standard
+  const [dataFine, setDataFine] = useState('');   // Valore di default standard
   
   const semestre = "Secondo Semestre"; 
   const annoAccademico = "2025/2026";
@@ -32,8 +32,8 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
       setVotoDesiderato(corsoDaModificare.voto_desiderato ? corsoDaModificare.voto_desiderato.toString() : '');
       
       // Carica le date salvate nel record esistente
-      setDataInizio(corsoDaModificare.data_inizio || '2026-03-01');
-      setDataFine(corsoDaModificare.data_fine || '2026-06-15');
+      setDataInizio(corsoDaModificare.data_inizio || '');
+      setDataFine(corsoDaModificare.data_fine || '');
     }
   }, [corsoDaModificare]);
 
