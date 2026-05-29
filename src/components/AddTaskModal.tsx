@@ -90,6 +90,8 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             setEndDate(taskToEdit.endDate || '');
             setEstDays(taskToEdit.estimatedDays ? taskToEdit.estimatedDays.toString() : '');
 
+            setActivityDate(taskToEdit.date || date);
+            
             //i tempi effettivi e reali vengono pre-compilati solo se l'elemento è un'attività
             if(taskToEdit.type === 'attivita') {
                 //nel file principale i dati sono in minuti, qui il dividiamo per 60 
@@ -135,7 +137,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             setSelectedCourse('Nessuno');
             setActivityDate(date);
         }
-    }, [taskToEdit, isVisible]);
+    }, [taskToEdit, isVisible, date, courses]);
 
     const handleSave = () => {
         if(!title.trim()) return;
@@ -241,6 +243,19 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
 
                 {/*Input per la descrizione*/}
                 <TextInput placeholder="Descrizione breve" placeholderTextColor = "#7c7c80" style={styles.input} onChangeText = {setDesc} value={desc} />
+
+                {type === 'attivita' && (
+                    <View style={{ marginBottom: 10 }}>
+                    <Text style={styles.label}>DATA SVOLGIMENTO ATTIVITÀ (AAAA-MM-GG) *</Text>
+                    <TextInput 
+                        placeholder="Es: 2026-05-29" 
+                        placeholderTextColor="#7c7c80" 
+                        style={styles.input} 
+                        onChangeText={setActivityDate} 
+                        value={activityDate} 
+                    />
+                </View>
+                )}
 
                 {/* Selettore dell'unità di durata per le sessioni, mostrato solo se type === 'sessione' */}
                 { type === 'sessione' && (

@@ -91,12 +91,13 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
     );
   }
 
+  const dataAttualeOggi = new Date().toISOString().split('T')[0];
   return (
     <View style={styles.container}>
-      {/* Ci riferiamo direttamente al componente del tuo amico passandogli le proprietà necessarie */}
+      {/* Ci riferiamo direttamente al componente passandogli la data dinamica di oggi */}
       <AddTaskModal 
         isVisible={modalVisibile}
-        date="2026-05-28" // Agganciabile dinamicamente alla data del calendario[cite: 2]
+        date={dataAttualeOggi} // <-- Sostituito il valore fisso con la costante dinamica
         courses={corsi} 
         onClose={handleClose}
         onSave={handleSaveTask}
