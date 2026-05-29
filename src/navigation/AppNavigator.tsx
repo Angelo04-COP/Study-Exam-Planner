@@ -10,7 +10,7 @@ import AcademicScreen from '../screens/AcademicScreen.js'; // Mantenuto .js come
 import TimerScreen from '../screens/TimerScreen';
 
 // 2. IMPORT DEI TUOI SCHERMI (Focalizzati sul tasto "+")
-import AddScreen from '../screens/AddScreen'; 
+import AddScreen from '../screens/AddScreen';
 import AddCorsoScreen from '../screens/add/AddCorsoScreen';
 import AddEsameScreen from '../screens/add/AddEsameScreen';
 import AddSceltaScreen from '../screens/add/AddSceltaScreen';
@@ -21,7 +21,7 @@ const Stack = createNativeStackNavigator();
 // Navigatore inferiore a schede (Slide pag. 24-25)
 function TabNavigator() {
   return (
-    <Tab.Navigator 
+    <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
@@ -56,12 +56,12 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator>
       {/* La schermata base contiene l'intera botoniera dei Tab */}
-      <Stack.Screen 
-        name="MainTabs" 
-        component={TabNavigator} 
-        options={{ headerShown: false }} 
+      <Stack.Screen
+        name="MainTabs"
+        component={TabNavigator}
+        options={{ headerShown: false }}
       />
-      
+
       {/* Le tue tre schermate di aggiunta (si aprono sopra ai Tab a tutto schermo) */}
       <Stack.Screen name="AddCorso" component={AddCorsoScreen} options={{ title: 'Nuovo Corso' }} />
       <Stack.Screen name="AddEsame" component={AddEsameScreen} options={{ title: 'Nuovo Esame' }} />
