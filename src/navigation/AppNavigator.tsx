@@ -1,4 +1,4 @@
-// src/navigation/AngeloNavigator.tsx
+// src/navigation/AppNavigator.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import DashboardScreen from '../screens/DashboardScreen'; // <-- Aggiunto il Cru
 import PlanningScreen from '../screens/PlanningScreen';
 import TimerScreen from '../screens/TimerScreen';
 
-// 2. IMPORT DELLE SCHERMATE DI AGGIUNTA (Modali della collega)
+// 2. IMPORT DELLE SCHERMATE DI AGGIUNTA 
 import AddCorsoScreen from '../screens/add/AddCorsoScreen';
 import AddEsameScreen from '../screens/add/AddEsameScreen';
 import AddSceltaScreen from '../screens/add/AddSceltaScreen';
@@ -65,7 +65,7 @@ function TabNavigator() {
   setTimeout(() => {
     navigation.navigate(screenName, params);
   }, 100); // 100 millisecondi bastano a garantire la stabilità dello Stack
-};
+  };
 
   return (
     <>
@@ -179,7 +179,6 @@ export default function AppNavigator() {
       <Stack.Screen name="AddEsame" component={AddEsameScreen} options={{ title: 'Nuovo Esame', headerShown: true, headerBackTitle: 'Indietro'}} />
       <Stack.Screen name="AddScelta" component={AddSceltaScreen} options={{ title: 'Pianifica', headerShown: true, headerBackTitle: 'Indietro' }} />
 
-      {/* AGGIUNGI LA TUA NUOVA SCHERMATA QUI: */}
       <Stack.Screen
         name="CourseDetail"
         component={CourseDetailScreen}
