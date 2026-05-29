@@ -127,15 +127,43 @@ export const salvaNuovoEsame = async (nuovoEsame) => {
   }
 };
 
+// Cerca questa funzione dentro src/constants/storage.js e sostituiscila:
+
 export const eliminaEsame = async (idEsame) => {
   try {
-    const attuali = await getEsami();
-    const listaAggiornata = attuali.filter(esame => esame.id !== idEsame);
-    await AsyncStorage.setItem(CHIAVE_ESAMI, JSON.stringify(listaAggiornata));
+    const attualiEsami = await getEsami();
+    
+    // 1. Trova l'esame che stiamo per eliminare per sapere a quale corso era legato
+    const esameDaEliminare = attualiEsami.find(esame => esame.id === idEsame);
+    
+    // 2. Filtra via l'esame (eliminazione)
+    const listaEsamiAggiornata = attualiEsami.filter(esame => esame.id !== idEsame);
+    await AsyncStorage.setItem(CHIAVE_ESAMI, JSON.stringify(listaEsamiAggiornata));
     console.log("Esame eliminato dal telefono!");
+
+    // 3. Se l'esame esisteva ed era legato a un corso, ripuliamo il corso associato
+    if (esameDaEliminare && esameDaEliminare.corso_id) {
+      const attualiCorsi = await getCorsi();
+      
+      const listaCorsiAggiornata = attualiCorsi.map(corso => {
+        if (corso.id === esameDaEliminare.corso_id) {
+          // Ripristiniamo il corso come "in corso" e azzeriamo il voto registrato
+          return {
+            ...corso,
+            stato: 'in corso',
+            voto_registrato: null
+          };
+        }
+        return corso;
+      });
+      
+      await AsyncStorage.setItem(CHIAVE_CORSI, JSON.stringify(listaCorsiAggiornata));
+      console.log("Corso associato ripristinato a 'in corso' e voto azzerato!");
+    }
+
     return true;
   } catch (error) {
-    console.error("Errore nell'eliminazione dell'esame:", error);
+    console.error("Errore nell'eliminazione dell'esame e ripristino corso:", error);
     return false;
   }
 };
