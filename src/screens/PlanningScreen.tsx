@@ -1,6 +1,7 @@
 import React from 'react';
 import {useState, useEffect} from 'react';
 import {View, ScrollView, Text, StyleSheet, TouchableOpacity, FlatList, Modal} from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage'; //Libreria per lo storage persistente
 import {Calendar, DateData} from 'react-native-calendars'; //Libreria per il calendario
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -59,19 +60,28 @@ const PlanningScreen = () => {
     //stato per memorizzare l'attività che si sta modificando (lo stato assume valore null se si sta inserendo)
     const [taskToEdit, setTaskToEdit] = useState<StudyItem | null>(null);
     
+    // stato che restituisce true se la schermata è visibile, false se è nascosta
+    const isFocused = useIsFocused(); 
 
     //lo stato contenente gli item viene inizializzato come vuoto all'inizio
    const [items, setItems] = useState<StudyItem[]>([]);
 
    //stato per i corsi reali; tale stato memorizza l'elenco dei corsi di indirizzo recuperati permanentemente dal database locale tramite 
    // il file storage.js
-   const [courses, setCourses] = useState<{id: string; name: string}[]>([]);
+   const [courses, setCourses] = useState<{id: string; nome: string}[]>([]);
+
+   // Stato booleano di controllo che funge da "semaforo" per la sincronizzazione asincrona.
+    // Viene inizializzato a 'false' e diventerà 'true' unicamente quando la procedura di lettura 
+    // dei dati iniziali da AsyncStorage sarà stata completata con successo.
+   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
     /**
      * CARICAMENTO DATI All'avvio del componente
-     * In questo useEffect (hook) l'array di dipendenze è vuoto: ciò significa che la funzione viene
-     * eseguita una sola volta, esattamente nel momento in cui la schermata viene caricata in memoria per 
-     * la prima volta
+     * A differenza di un tradizionale hook di inizializzazione con array di dipendenze vuoto, questo useEffect 
+     * monitora costantemente la variabile booleana 'isFocused' fornita dall'hook useIsFocused() di React Navigation.
+     * Nelle architetture a schede (Tab Navigation), le schermate rimangono montate in background per ottimizzare le prestazioni; 
+     * di conseguenza, navigando tra i menu, un normale hook iniziale non verrebbe rieseguito. Legando l'effetto a 'isFocused', 
+     * costringiamo l'applicazione a intercettare ogni singolo istante in cui l'utente torna visualizzare questa pagina.
      * La funzione loadData è asincrona: leggere dati infatti dalla memoria richiede tempo; se l'applicazione
      * si bloccasse in attesa della memoria, la UI si congelerebbe
      * Nel blocco try, invece di accedere direttamente ad AsyncStorage, si utilizzano i metodi getCorsi() e getAttivita() 
@@ -86,7 +96,10 @@ const PlanningScreen = () => {
      * Se si verificasse un errore imprevisto durante la lettura, il codice salterebbe immediatamente dentro il
      * catch . Invece di far andare l'applicazione in crash, si stampa l'errore in console e l'app si avvia comunque con un array 
      * vuoto, garantendo la massima robustezza del software
-     * 
+     * Il blocco finally viene eseguito tassativamente al termine del ciclo try/catch: qui viene invocata la state setter function 
+     * setIsLoaded(true) per notificare reattivamente all'applicazione che i dati storici sono stati interamente ripristinati in memoria.
+     * La clausola condizionale esterna (if (isFocused)) garantisce che l'interrogazione del database avvenga esclusivamente 
+     * quando la schermata è effettivamente attiva sullo schermo, azzerando inutili sprechi di risorse hardware in background.
      */
     useEffect(() => {
         const loadData = async () => {
@@ -101,20 +114,29 @@ const PlanningScreen = () => {
             } catch (error) {
                 console.error("Errore nel recupero da AsyncStorage: ", error);
                 setItems([]); //fallback di sicurezza in caso di memoria corrotta
+            } finally {
+                setIsLoaded(true);
+
             }
         };
 
-        loadData();
+       // si esegue il caricamento solo se la schermata è effettivamente attiva/visibile
+       if (isFocused) {
+            loadData();
+        }
 
 
-    }, []); //l'array delle dipendenze è VUOTO
+    }, [isFocused]);
 
     /**
      * SALVATAGGIO REATTIVO (Eseguito AUTOMATICAMENTE a ogni modifica)
-     * A differenza del primo hook, nelle dipendenze è presente la variabile di stato items: 
+     * A differenza del primo hook, nelle dipendenze sono presenti sia la variabile di stato items sia la variabile 'isLoaded': 
      * ciò significa che ogni volta che il suo valore cambia (perché l'utente ha aggiunto una sessione, modificato un'attività o cliccato sul
-     * cestino per eliminare un elemento) , viene eseguito immediatamente il codice presente nell'hook
+     * cestino per eliminare un elemento, oppure perché la lettura asincrona iniziale si è conclusa) , viene eseguito immediatamente il codice presente nell'hook
      * Come la funzione loadData, anche la funzione saveData è asincrona per non bloccare l'applicazione durante la scrittura fisica in memoria
+     * La condizione if(!isLoaded) return; funge da fondamentale "clausola di guardia": impedisce matematicamente all'hook di sovrascrivere 
+     *  il database locale all'avvio dell'app. Poiché infatti lo stato iniziale di 'items' nasce vuoto ([]), senza questa barriera l'app registrerebbe
+     *  un array vuoto sul disco fisso un istante prima che il primo hook riesca a completare la lettura dei dati reali
      * Nel blocco try, la funzione AsyncStorage.setItem ha bisogno di due argomenti: la stringa identificativa globale delle attività (@planner_attivita)
      *  e il dato da salvare. Poiché pero AsyncStorage memorizza esclusivamente testo semplice (ossia stringhe), si utlizza la funzione
      *  JSON.stringify(items) che trasforma l'array di oggetti items in una singola stringa di testo continua in formato JSON
@@ -125,7 +147,7 @@ const PlanningScreen = () => {
      */
     useEffect(() => {
         const saveData = async () => {
-            if(!items || items.length === 0){
+            if(!isLoaded){
                 return;
             }
             try {
@@ -139,7 +161,7 @@ const PlanningScreen = () => {
 
         saveData();
 
-    }, [items]);
+    }, [items, isLoaded]);
 
     /**
      *  Funzione che restituisce il colore associato alla priorità
@@ -218,7 +240,7 @@ const PlanningScreen = () => {
                         estimatedDays: taskData.estimatedDays,
                         
                         type: taskData.type,
-                        course_id: courses.find(c => c.name === taskData.course)?.id
+                        course_id: courses.find(c => c.nome === taskData.course)?.id
                     };
                 }
                 return item;
@@ -259,7 +281,7 @@ const PlanningScreen = () => {
                 // Se il metodo find trova il corso, allora restituisce tale elemento e il codice prosegue leggendo
                 // la proprietà .id
                 //Se find non trova nulla, invece, viene restituito undefined (si noti infatti l'utilizzo di ? )
-                course_id: courses.find(c => c.name === taskData.course)?.id
+                course_id: courses.find(c => c.nome === taskData.course)?.id
 
             };
             setItems([...items, newItem]);
@@ -419,7 +441,7 @@ const PlanningScreen = () => {
                                      </View>
 
                                     {/*Badge del corso (se presente)*/}
-                                    {corso && <Text style= {styles.courseTag}>{corso.name}</Text>}
+                                    {corso && <Text style= {styles.courseTag}>{corso.nome}</Text>}
                                     
                                     {/*Tipologia di Sessione Associata (il badge relativo alla sessione associata
                                         è visibile solo se la sessione è presente e se l'elemento che si sta inserendo si tratta di un'attività)*/}
