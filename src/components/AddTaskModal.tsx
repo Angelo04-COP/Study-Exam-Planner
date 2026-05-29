@@ -66,7 +66,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
     //stato per gestire la selezione della tipologia ('sessione' o 'attivita');
     // di default il valore iniziale dello stato è 'attivita'
     const [type, setType] = useState<'attivita' | 'sessione'> ('attivita')
-
+    const [activityDate, setActivityDate] = useState<string>(date);
 
     //si imposta l'effetto useEffect per intercettare l'apertura e il tipo di operazione (INSERIMENTO O MODIFICA)
     /*L'array delle dipendenze in fondo alle parentesi quadre specifica quando far ripartire lo useEffect.
@@ -133,8 +133,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             setActTime('');
             setNotes('');
             setSelectedCourse('Nessuno');
-
-
+            setActivityDate(date);
         }
     }, [taskToEdit, isVisible]);
 
@@ -149,7 +148,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             title,
             desc,
             course: selectedCourse,
-            date: type === 'sessione' && durationUnit === 'giorni' ? startDate : date, 
+            date: type === 'attivita' ? activityDate.trim() : (durationUnit === 'giorni' ? startDate : date),
             //le sessioni usano un valore neutro di default per la priorità
             priority: type === 'sessione' ? 'Media' : priority,
             //si passa il valore calcolato di sessionType se il macro-tipo è 'sessione'
