@@ -16,8 +16,15 @@ export default function AcademicScreen() {
   const [esami, setEsami] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- NUOVO STATO: TESTO DELLA RICERCA ---
+  // --- STATI DI RICERCA E FILTRAGGIO ---
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Filtri Corsi
+  const [filtroStatoCorso, setFiltroStatoCorso] = useState('Tutti');
+  const [filtroSemestre, setFiltroSemestre] = useState('Tutti');
+  
+  // Filtri Esami
+  const [filtroStatoEsame, setFiltroStatoEsame] = useState('Tutti');
 
   // --- STATI PER IL MODALE GRAFICO DI VERBALIZZAZIONE REALE ---
   const [isVerbalizzaModalVisible, setVerbalizzaModalVisible] = useState(false);
@@ -33,7 +40,6 @@ export default function AcademicScreen() {
       
       const oggiStr = new Date().toISOString().split('T')[0];
 
-      // Calcolo dello stato temporale dinamico basato sulle date
       const corsiAggiornatiDinamici = (corsiSalvati || []).map(corso => {
         if (corso.data_inizio && corso.data_fine) {
           let nuovoStato = corso.stato;
@@ -62,26 +68,46 @@ export default function AcademicScreen() {
     if (isFocused) caricaDatiCarriera();
   }, [isFocused]);
 
-  // --- 2. LOGICA DI RICERCA E FILTRAGGIO ISTANTANEO ---
-  // Filtriamo i corsi in base al nome o al docente inserito nella barra di ricerca
+  // --- 2. LOGICA DI RICERCA E FILTRAGGIO INCROCIATO ---
   const corsiFiltrati = corsi.filter(corso => {
+    // A) Filtro testuale (Search Bar)
     const query = searchQuery.toLowerCase();
     const nomeMatch = corso.nome && corso.nome.toLowerCase().includes(query);
     const docenteMatch = corso.docente && corso.docente.toLowerCase().includes(query);
-    return nomeMatch || docenteMatch;
+    const testualeOk = nomeMatch || docenteMatch;
+
+    // B) Filtro per Stato
+    const statoC = corso.stato ? corso.stato.toLowerCase() : '';
+    const statoOk = filtroStatoCorso === 'Tutti' || statoC === filtroStatoCorso.toLowerCase();
+
+    // C) Filtro per Semestre
+    const semestreOk = filtroSemestre === 'Tutti' || (corso.semestre && corso.semestre === filtroSemestre);
+
+    // Il corso deve soddisfare TUTTI i filtri attivi
+    return testualeOk && statoOk && semestreOk;
   });
 
-  // Filtriamo gli esami in base al titolo o al nome del corso collegato
   const esamiFiltrati = esami.filter(esame => {
+    // A) Filtro testuale
     const query = searchQuery.toLowerCase();
     const titoloMatch = esame.titolo && esame.titolo.toLowerCase().includes(query);
-    
     const corsoCollegato = corsi.find(c => c.id === esame.corso_id);
     const nomeCorsoMatch = corsoCollegato && corsoCollegato.nome.toLowerCase().includes(query);
-    
-    return titoloMatch || nomeCorsoMatch;
-  });
+    const testualeOk = titoloMatch || nomeCorsoMatch;
 
+    // B) Filtro per Stato
+    const statoE = esame.stato ? esame.stato.toLowerCase() : '';
+    let filtroEsameCheck = filtroStatoEsame.toLowerCase();
+    
+    // Gestione particolare per "Bocciato/Rifiutato" che potresti aver salvato in formati diversi
+    if (filtroEsameCheck === 'bocciato/rifiutato') {
+      filtroEsameCheck = 'rifiutato'; 
+    }
+    
+    const statoOk = filtroStatoEsame === 'Tutti' || statoE.includes(filtroEsameCheck);
+
+    return testualeOk && statoOk;
+  });
 
   // --- 3. APERTURA INTERFACCIA MODALE INTEGRATA ---
   const apriVerbalizzazione = (esame) => {
@@ -92,7 +118,7 @@ export default function AcademicScreen() {
     setVerbalizzaModalVisible(true);
   };
 
-  // --- 4. LOGICA DI VERBALIZZAZIONE CON REALE AGGIORNAMENTO DEL CORSO ---
+  // --- 4. LOGICA DI VERBALIZZAZIONE ---
   const confermaEsitoDettagliato = async (esito) => {
     if (!esameSelezionato) return;
 
@@ -107,12 +133,7 @@ export default function AcademicScreen() {
       votoFinalizzato = votoNum;
     }
 
-    const success = await verbalizzaEsitoEsame(
-      esameSelezionato.id, 
-      esameSelezionato.corso_id, 
-      esito, 
-      votoFinalizzato
-    );
+    const success = await verbalizzaEsitoEsame(esameSelezionato.id, esameSelezionato.corso_id, esito, votoFinalizzato);
     
     if (success) {
       setVerbalizzaModalVisible(false);
@@ -125,44 +146,32 @@ export default function AcademicScreen() {
   // --- 5. LOGICA DI ELIMINAZIONE COMPATIBILE WEB/MOBILE ---
   const confermEliminazioneCorso = (id, nome) => {
     if (typeof window !== 'undefined' && window.confirm) {
-      const confermaWeb = window.confirm(`Sei sicuro di voler eliminare il corso "${nome}"?`);
-      if (confermaWeb) eseguiEliminazioneCorso(id);
+      if (window.confirm(`Sei sicuro di voler eliminare il corso "${nome}"?`)) eseguiEliminazioneCorso(id);
     } else {
-      Alert.alert(
-        "Elimina Corso",
-        `Sei sicuro di voler eliminare il corso "${nome}"?`,
-        [
-          { text: "Annulla", style: "cancel" },
-          { text: "Elimina", style: "destructive", onPress: () => eseguiEliminazioneCorso(id) }
-        ]
-      );
+      Alert.alert("Elimina Corso", `Sei sicuro di voler eliminare il corso "${nome}"?`, [
+        { text: "Annulla", style: "cancel" },
+        { text: "Elimina", style: "destructive", onPress: () => eseguiEliminazioneCorso(id) }
+      ]);
     }
   };
 
   const eseguiEliminazioneCorso = async (id) => {
-    const success = await eliminaCorso(id);
-    if (success) setCorsi(corsi.filter(c => c.id !== id));
+    if (await eliminaCorso(id)) setCorsi(corsi.filter(c => c.id !== id));
   };
 
   const confermEliminazioneEsame = (id, titolo) => {
     if (typeof window !== 'undefined' && window.confirm) {
-      const confermaWeb = window.confirm(`Sei sicuro di voler eliminare l'esame "${titolo}"?`);
-      if (confermaWeb) eseguiEliminazioneEsame(id);
+      if (window.confirm(`Sei sicuro di voler eliminare l'esame "${titolo}"?`)) eseguiEliminazioneEsame(id);
     } else {
-      Alert.alert(
-        "Elimina Esame",
-        `Sei sicuro di voler eliminare l'esame "${titolo}"?`,
-        [
-          { text: "Annulla", style: "cancel" },
-          { text: "Elimina", style: "destructive", onPress: () => eseguiEliminazioneEsame(id) }
-        ]
-      );
+      Alert.alert("Elimina Esame", `Sei sicuro di voler eliminare l'esame "${titolo}"?`, [
+        { text: "Annulla", style: "cancel" },
+        { text: "Elimina", style: "destructive", onPress: () => eseguiEliminazioneEsame(id) }
+      ]);
     }
   };
 
   const eseguiEliminazioneEsame = async (id) => {
-    const success = await eliminaEsame(id);
-    if (success) setEsami(esami.filter(e => e.id !== id));
+    if (await eliminaEsame(id)) setEsami(esami.filter(e => e.id !== id));
   };
 
   // --- HELPERS BADGE ---
@@ -178,7 +187,7 @@ export default function AcademicScreen() {
   const getColoreStatoEsame = (stato) => {
     const s = stato?.toLowerCase();
     if (s === 'superato') return '#4CAF50';
-    if (s === 'bocciato/rifiutato') return '#FF5252';
+    if (s?.includes('rifiutato') || s?.includes('bocciato')) return '#FF5252';
     return '#8EBBF3';
   };
 
@@ -191,15 +200,25 @@ export default function AcademicScreen() {
     );
   }
 
+  // Costanti per le etichette dei filtri
+  const filtriStatoCorso = ['Tutti', 'Da iniziare', 'In corso', 'Completato'];
+  const filtriSemestreCorso = ['Tutti', 'Primo Semestre', 'Secondo Semestre'];
+  const filtriStatoEsame = ['Tutti', 'Programmato', 'Superato', 'Bocciato/Rifiutato'];
+
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} stickyHeaderIndices={[1]}>
+        
         {/* HEADER ROW */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>CARRIERA</Text>
           <TouchableOpacity style={styles.switchContainer} onPress={() => {
             setMostraEsami(!mostraEsami);
-            setSearchQuery(''); // Svuota la ricerca quando si cambia tab
+            // Resetta i filtri quando si cambia la visualizzazione
+            setSearchQuery(''); 
+            setFiltroStatoCorso('Tutti');
+            setFiltroSemestre('Tutti');
+            setFiltroStatoEsame('Tutti');
           }} activeOpacity={0.9}>
             <Text style={[styles.switchText, !mostraEsami && styles.switchTextActive]}>Corsi</Text>
             <Text style={[styles.switchText, mostraEsami && styles.switchTextActive]}>Esami</Text>
@@ -207,25 +226,55 @@ export default function AcademicScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* --- BARRA DI RICERCA --- */}
-        <View style={styles.searchBarContainer}>
-          <Ionicons name="search" size={20} color="#94a3b8" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={!mostraEsami ? "Cerca un corso per nome o docente..." : "Cerca un esame..."}
-            placeholderTextColor="#94a3b8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
-              <Ionicons name="close-circle" size={20} color="#94a3b8" />
-            </TouchableOpacity>
+        {/* --- BLOCCO DI RICERCA E FILTRI (Fissato in alto con stickyHeaderIndices) --- */}
+        <View style={styles.stickyFilterBlock}>
+          
+          {/* Barra di Ricerca Testuale */}
+          <View style={styles.searchBarContainer}>
+            <Ionicons name="search" size={20} color="#94a3b8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={!mostraEsami ? "Cerca per nome o docente..." : "Cerca un esame..."}
+              placeholderTextColor="#94a3b8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                <Ionicons name="close-circle" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Sezione Filtri a Pillola */}
+          {!mostraEsami ? (
+            <View style={styles.filtersContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                <View style={styles.filterGroupTitle}><Ionicons name="flag-outline" size={14} color="#64748B" /><Text style={styles.filterTitleText}>Stato:</Text></View>
+                {filtriStatoCorso.map(f => (
+                  <TouchableOpacity key={f} style={[styles.chip, filtroStatoCorso === f && styles.chipActive]} onPress={() => setFiltroStatoCorso(f)}>
+                    <Text style={[styles.chipText, filtroStatoCorso === f && styles.chipTextActive]}>{f}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={styles.filtersContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+                <View style={styles.filterGroupTitle}><Ionicons name="layers-outline" size={14} color="#64748B" /><Text style={styles.filterTitleText}>Esito:</Text></View>
+                {filtriStatoEsame.map(f => (
+                  <TouchableOpacity key={f} style={[styles.chip, filtroStatoEsame === f && styles.chipActive]} onPress={() => setFiltroStatoEsame(f)}>
+                    <Text style={[styles.chipText, filtroStatoEsame === f && styles.chipTextActive]}>{f}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           )}
+
         </View>
 
+        {/* ================= LISTE RISULTATI ================= */}
         {!mostraEsami ? (
-          /* ================= VISTA CORSI ================= */
           <View style={styles.listaContainer}>
             {corsiFiltrati.length > 0 ? (
               corsiFiltrati.map((corso) => (
@@ -246,7 +295,8 @@ export default function AcademicScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-
+                  
+                  <Text style={styles.cardSubText}>Semestre: {corso.semestre || 'Non specificato'}</Text>
                   <Text style={styles.cardSubText}>Docente: {corso.docente || 'Non assegnato'}</Text>
 
                   <View style={styles.cardFooter}>
@@ -259,13 +309,10 @@ export default function AcademicScreen() {
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={styles.emptyText}>
-                {searchQuery.length > 0 ? "Nessun risultato trovato per la tua ricerca." : "Nessun corso aggiunto alla carriera."}
-              </Text>
+              <Text style={styles.emptyText}>Nessun corso corrisponde ai filtri selezionati.</Text>
             )}
           </View>
         ) : (
-          /* ================= VISTA ESAMI ================= */
           <View style={styles.listaContainer}>
             {esamiFiltrati.length > 0 ? (
               esamiFiltrati.map((esame) => {
@@ -309,16 +356,14 @@ export default function AcademicScreen() {
 
                     {esame.voto_risultato && (
                       <View style={styles.esitoGuscio}>
-                        <Text style={styles.esitoTesto}>Superato con: {esame.voto_risultato}</Text>
+                        <Text style={styles.esitoTesto}>Esito: {esame.voto_risultato}</Text>
                       </View>
                     )}
                   </TouchableOpacity>
                 );
               })
             ) : (
-              <Text style={styles.emptyText}>
-                {searchQuery.length > 0 ? "Nessun risultato trovato per la tua ricerca." : "Nessun esame programmato."}
-              </Text>
+              <Text style={styles.emptyText}>Nessun esame corrisponde ai filtri selezionati.</Text>
             )}
           </View>
         )}
@@ -360,30 +405,20 @@ export default function AcademicScreen() {
             </View>
 
             <View style={styles.modalActionsStack}>
-              <TouchableOpacity 
-                style={[styles.modalButton, { backgroundColor: '#4CAF50' }]} 
-                onPress={() => confermaEsitoDettagliato('SUPERATO')}
-              >
+              <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#4CAF50' }]} onPress={() => confermaEsitoDettagliato('SUPERATO')}>
                 <Ionicons name="checkmark-circle-outline" size={20} color="white" />
                 <Text style={styles.modalButtonText}>Superato (Aggiorna Corso)</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.modalButton, { backgroundColor: '#FF5252' }]} 
-                onPress={() => confermaEsitoDettagliato('RIFIUTATO')}
-              >
+              <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#FF5252' }]} onPress={() => confermaEsitoDettagliato('RIFIUTATO')}>
                 <Ionicons name="close-circle-outline" size={20} color="white" />
                 <Text style={styles.modalButtonText}>Rifiutato / Bocciato</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={[styles.modalButton, { backgroundColor: '#94a3b8', marginTop: 8 }]} 
-                onPress={() => setVerbalizzaModalVisible(false)}
-              >
+              <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#94a3b8', marginTop: 8 }]} onPress={() => setVerbalizzaModalVisible(false)}>
                 <Text style={styles.modalButtonText}>Annulla</Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </View>
       </Modal>
@@ -392,8 +427,10 @@ export default function AcademicScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5', padding: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 40 },
+  container: { flex: 1, backgroundColor: '#F5F5F5' }, // Padding rimosso dal contenitore per permettere allo sticky header di toccare i bordi laterali
+  
+  // Header Principale
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 40, paddingHorizontal: 20 },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#333' },
   switchContainer: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 20, width: 140, height: 36, alignItems: 'center', position: 'relative' },
   switchText: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: '#64748B', zIndex: 2 },
@@ -401,40 +438,48 @@ const styles = StyleSheet.create({
   switchBall: { position: 'absolute', height: 30, width: 66, borderRadius: 15, backgroundColor: '#475569', zIndex: 1, top: 3 },
   switchBallLeft: { left: 3 },
   switchBallRight: { right: 3 },
-  
-  // --- STILI BARRA DI RICERCA ---
+
+  // --- STILI RICERCA E FILTRI ---
+  stickyFilterBlock: {
+    backgroundColor: '#F5F5F5', // Nasconde il contenuto che scorre sotto
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    paddingTop: 10,
+    zIndex: 10,
+  },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: 12,
     paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginBottom: 24, // Spazio sotto la barra prima delle liste
+    paddingVertical: 10,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 15,
-    color: '#333',
-  },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#333' },
+  
+  // Filtri a Pillola (Chips)
+  filtersContainer: { marginBottom: 5 },
+  filterGroupTitle: { flexDirection: 'row', alignItems: 'center', marginRight: 10, backgroundColor: '#E2E8F0', paddingHorizontal: 10, borderRadius: 8 },
+  filterTitleText: { fontSize: 12, fontWeight: '700', color: '#475569', marginLeft: 4 },
+  chipRow: { flexDirection: 'row', marginBottom: 10 },
+  chip: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, backgroundColor: 'white', marginRight: 8, borderWidth: 1, borderColor: '#CBD5E1', justifyContent: 'center' },
+  chipActive: { backgroundColor: '#177AD5', borderColor: '#177AD5' },
+  chipText: { fontSize: 13, color: '#64748B', fontWeight: '600' },
+  chipTextActive: { color: 'white' },
 
-  listaContainer: { gap: 16 },
+  // Liste e Card (Aggiunto padding orizzontale)
+  listaContainer: { gap: 16, paddingHorizontal: 20, paddingTop: 10 },
   card: { backgroundColor: 'white', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 3 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 10 },
   iconBtn: { padding: 4 },
   cardMainTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
   corsoIncrociatoText: { fontSize: 13, color: '#177AD5', fontWeight: '600', marginTop: 2 },
-  cardSubText: { fontSize: 14, color: '#64748B', marginBottom: 12 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardSubText: { fontSize: 13, color: '#64748B', marginBottom: 2 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   infoTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, gap: 6 },
   infoTagText: { fontSize: 12, color: '#475569', fontWeight: '500' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
@@ -442,10 +487,11 @@ const styles = StyleSheet.create({
   votoTesto: { fontSize: 14, fontWeight: 'bold', color: '#4CAF50' },
   esitoGuscio: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   esitoTesto: { fontSize: 13, fontWeight: '600', color: '#4CAF50' },
-  emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 30, fontSize: 15, fontStyle: 'italic' },
+  emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 40, fontSize: 15, fontStyle: 'italic' },
   
+  // Modale
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: 'white', width: '85%', borderRadius: 20, padding: 24, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 },
+  modalContent: { backgroundColor: 'white', width: '85%', borderRadius: 20, padding: 24, alignItems: 'center', elevation: 10 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B', marginBottom: 8 },
   dettagliIncrociatiContainer: { width: '100%', alignItems: 'center', marginBottom: 15 },
   modalSubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 10, lineHeight: 20 },
