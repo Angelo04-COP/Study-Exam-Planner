@@ -20,7 +20,27 @@ export default function AcademicScreen() {
     setIsLoading(true);
     try {
       const [corsiSalvati, esamiSalvati] = await Promise.all([ getCorsi(), getEsami() ]);
-      setCorsi(corsiSalvati || []);
+      
+      const oggiStr = new Date().toISOString().split('T')[0];
+
+      // Mappiamo i corsi per aggiornare lo stato in tempo reale se le date sono cambiate nel tempo
+      const corsiAggiornatiDinamici = (corsiSalvati || []).map(corso => {
+        // Se il corso ha le date inserite, ricalcola lo stato attuale
+        if (corso.data_inizio && corso.data_fine) {
+          let nuovoStato = corso.stato;
+          if (corso.data_inizio > oggiStr) {
+            nuovoStato = 'da iniziare';
+          } else if (corso.data_inizio <= oggiStr && corso.data_fine >= oggiStr) {
+            nuovoStato = 'in corso';
+          } else if (corso.data_fine < oggiStr) {
+            nuovoStato = 'completato';
+          }
+          return { ...corso, stato: nuovoStato };
+        }
+        return corso;
+      });
+
+      setCorsi(corsiAggiornatiDinamici);
       setEsami(esamiSalvati || []);
     } catch (error) {
       console.error("Errore nel recupero dati per la Carriera:", error);
@@ -102,9 +122,10 @@ export default function AcademicScreen() {
 
   // Helper Colori
   const getColoreStatoCorso = (stato) => {
-    switch (stato?.toLowerCase()) {
-      case 'completato': return '#4CAF50';
-      case 'in corso': return '#177AD5';
+    switch (stato) {
+      case 'completato': return '#4CAF50'; // Verde
+      case 'in corso': return '#177AD5';    // Blu
+      case 'da iniziare': return '#F39C12'; // Arancione / Giallo scuro
       default: return '#94a3b8';
     }
   };

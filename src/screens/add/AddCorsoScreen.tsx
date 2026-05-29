@@ -37,11 +37,27 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
     }
   }, [corsoDaModificare]);
 
+  // Funzione helper per calcolare lo stato in base alle date (Formato YYYY-MM-DD)
+  const calcolaStatoCorso = (inizio: string, fine: string): string => {
+    const oggiStr = new Date().toISOString().split('T')[0]; // Ottiene la data odierna in formato YYYY-MM-DD
+
+    if (inizio > oggiStr) {
+      return 'da iniziare';
+    } else if (inizio <= oggiStr && fine >= oggiStr) {
+      return 'in corso';
+    } else {
+      return 'completato';
+    }
+  };
+
   const handleSalvaCorso = async () => {
     if (!nome.trim()) {
       Alert.alert("Errore", "Il nome del corso è obbligatorio!");
       return;
     }
+
+    // Calcoliamo lo stato in modo dinamico basandoci sulle date inserite
+    const statoDinamico = calcolaStatoCorso(dataInizio.trim(), dataFine.trim());
 
     // Costruiamo l'oggetto preservando i dati storici se stiamo modificando
     const corsoSalvato = {
@@ -52,14 +68,14 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
       anno_accademico: corsoDaModificare ? corsoDaModificare.anno_accademico : annoAccademico,
       cfu: cfu ? parseInt(cfu, 10) : 0,
       descrizione: descrizione.trim(),
-      stato: corsoDaModificare ? corsoDaModificare.stato : 'in corso', 
+      
+      // APPLICAZIONE DELLA NUOVA LOGICA RICHIESTA
+      stato: statoDinamico, 
+      
       voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : 18,
       voto_ottenuto: corsoDaModificare ? corsoDaModificare.voto_ottenuto : null, 
-      
-      // Salviamo le date digitate dall'utente nel form
       data_inizio: dataInizio.trim(),
       data_fine: dataFine.trim(),
-      
       colore: corsoDaModificare ? corsoDaModificare.colore : '#177AD5', 
       anno: corsoDaModificare ? corsoDaModificare.anno : 1
     };
@@ -73,7 +89,7 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
         Alert.alert("Successo", `Corso "${nome}" salvato con successo!`);
       }
       
-      navigation.goBack(); // Chiude fluidamente il modale tornando alla Carriera
+      navigation.goBack();
     } catch (error) {
       Alert.alert("Errore", "Impossibile salvare il corso sul dispositivo.");
       console.error(error);
