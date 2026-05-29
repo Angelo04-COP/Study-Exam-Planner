@@ -1,25 +1,33 @@
-// src/screens/aggiungi/AddCorsoScreen.tsx
-import React, { useState } from 'react';
+// src/screens/add/AddCorsoScreen.tsx
+import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
-// L'import punta alla cartella delle costanti/storage in src
-import { salvaNuovoCorso } from '../../constants/storage';
+import { aggiornaCorso, salvaNuovoCorso } from '../../constants/storage';
 
-// PASSO 1: Inseriamo { navigation } come parametro dello schermo (Slide pag. 14, 18)
-export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
+// Inserito 'route' nei parametri accettati, in linea con la pagina 19 delle slide del docente
+export default function NuovoCorsoScreen({ route, navigation }: { route: any, navigation: any }) {
   
-  // Stati allineati con le proprietà del mockData
+  // Recuperiamo l'eventuale parametro di modifica passato dalla rotta precedente
+  const corsoDaModificare = route.params?.corsoDaModificare;
+
   const [nome, setNome] = useState('');
   const [docente, setDocente] = useState('');
   const [cfu, setCfu] = useState('');
   const [descrizione, setDescrizione] = useState('');
   const [votoDesiderato, setVotoDesiderato] = useState('');
   
-  // Nuovi stati per la gestione manuale delle date di inizio e fine
-  const [dataInizio, setDataInizio] = useState('');
-  const [dataFine, setDataFine] = useState('');
-  
   const semestre = "Secondo Semestre"; 
   const annoAccademico = "2025/2026";
+
+  // Se siamo in modalità modifica, compiliamo automaticamente i campi all'avvio
+  useEffect(() => {
+    if (corsoDaModificare) {
+      setNome(corsoDaModificare.nome || '');
+      setDocente(corsoDaModificare.docente || '');
+      setCfu(corsoDaModificare.cfu ? corsoDaModificare.cfu.toString() : '');
+      setDescrizione(corsoDaModificare.descrizione || '');
+      setVotoDesiderato(corsoDaModificare.voto_desiderato ? corsoDaModificare.voto_desiderato.toString() : '');
+    }
+  }, [corsoDaModificare]);
 
   const handleSalvaCorso = async () => {
     if (!nome.trim()) {
@@ -27,41 +35,34 @@ export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
       return;
     }
 
-    // Validazione base per assicurarsi che i campi data non siano vuoti
-    if (!dataInizio.trim() || !dataFine.trim()) {
-      Alert.alert("Errore", "Le date di inizio e fine sono obbligatorie!");
-      return;
-    }
-
-    const nuovoCorso = {
-      id: 'c' + Date.now(), 
+    // Costruiamo l'oggetto preservando i dati storici se stiamo modificando
+    const corsoSalvato = {
+      id: corsoDaModificare ? corsoDaModificare.id : 'c' + Date.now(), 
       nome: nome.trim(),
       docente: docente.trim(),
-      semestre: semestre,
-      anno_accademico: annoAccademico,
+      semestre: corsoDaModificare ? corsoDaModificare.semestre : semestre,
+      anno_accademico: corsoDaModificare ? corsoDaModificare.anno_accademico : annoAccademico,
       cfu: cfu ? parseInt(cfu, 10) : 0,
       descrizione: descrizione.trim(),
-      stato: 'in corso', 
+      stato: corsoDaModificare ? corsoDaModificare.stato : 'in corso', 
       voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : 18,
-      voto_ottenuto: null, 
-      data_inizio: dataInizio.trim(), // Salvataggio del valore dinamico inserito dall'utente
-      data_fine: dataFine.trim(),     // Salvataggio del valore dinamico inserito dall'utente
-      colore: '#177AD5', 
-      anno: 1
+      voto_ottenuto: corsoDaModificare ? corsoDaModificare.voto_ottenuto : null, 
+      data_inizio: corsoDaModificare ? corsoDaModificare.data_inizio : '2026-03-01',
+      data_fine: corsoDaModificare ? corsoDaModificare.data_fine : '2026-06-15',
+      colore: corsoDaModificare ? corsoDaModificare.colore : '#177AD5', 
+      anno: corsoDaModificare ? corsoDaModificare.anno : 1
     };
 
     try {
-      console.log("Nuovo Corso pronto per lo storage:", nuovoCorso);
-
-      // Salvataggio asincrono persistente locale
-      await salvaNuovoCorso(nuovoCorso);
-
-      Alert.alert("Successo", `Corso "${nome}" salvato con successo!`);
+      if (corsoDaModificare) {
+        await aggiornaCorso(corsoSalvato);
+        Alert.alert("Successo", `Corso "${nome}" modificato con successo!`);
+      } else {
+        await salvaNuovoCorso(corsoSalvato);
+        Alert.alert("Successo", `Corso "${nome}" salvato con successo!`);
+      }
       
-      // PASSO 2: Sostituiamo router.replace con la navigazione nativa (Slide pag. 14)
-      // Specifichiamo il nome esatto della rotta della tab (es: 'Academic')
-      navigation.navigate('MainTabs', { screen: 'Academic' });
-      
+      navigation.goBack(); // Chiude fluidamente il modale tornando alla Carriera
     } catch (error) {
       Alert.alert("Errore", "Impossibile salvare il corso sul dispositivo.");
       console.error(error);
@@ -69,7 +70,7 @@ export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>Nome del Corso *</Text>
       <TextInput style={styles.input} placeholder="Es: Computer Vision" value={nome} onChangeText={setNome} />
 
@@ -82,29 +83,11 @@ export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
       <Text style={styles.label}>Voto Desiderato (Esame)</Text>
       <TextInput style={styles.input} placeholder="Es: 28" keyboardType="numeric" value={votoDesiderato} onChangeText={setVotoDesiderato} />
 
-      {/* --- NUOVI CAMPI INPUT PER LE DATE --- */}
-      <Text style={styles.label}>Data Inizio (AAAA-MM-GG) *</Text>
-      <TextInput 
-        style={styles.input} 
-        placeholder="Es: 2026-03-01" 
-        value={dataInizio} 
-        onChangeText={setDataInizio} 
-      />
-
-      <Text style={styles.label}>Data Fine (AAAA-MM-GG) *</Text>
-      <TextInput 
-        style={styles.input} 
-        placeholder="Es: 2026-06-15" 
-        value={dataFine} 
-        onChangeText={setDataFine} 
-      />
-      {/* ------------------------------------- */}
-
       <Text style={styles.label}>Descrizione del corso</Text>
       <TextInput style={[styles.input, styles.textArea]} placeholder="Cosa si studia..." multiline value={descrizione} onChangeText={setDescrizione} />
 
       <TouchableOpacity style={styles.btnSalva} onPress={handleSalvaCorso}>
-        <Text style={styles.btnText}>Salva Corso</Text>
+        <Text style={styles.btnText}>{corsoDaModificare ? "Salva Modifiche" : "Salva Corso"}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

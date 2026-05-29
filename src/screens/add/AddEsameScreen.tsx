@@ -1,17 +1,28 @@
-// src/screens/aggiungi/AddEsameScreen.tsx
-import React, { useState } from 'react';
+// src/screens/add/AddEsameScreen.tsx
+import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
-// Importiamo la funzione di salvataggio permanente dal file storage in src
-import { salvaNuovoEsame } from '../../constants/storage';
+import { aggiornaEsame, salvaNuovoEsame } from '../../constants/storage';
 
-// PASSO 1: Sostituiamo il router inserendo la prop nativa navigation (Slide pag. 14)
-export default function NuovoEsameScreen({ navigation }: { navigation: any }) {
+export default function NuovoEsameScreen({ route, navigation }: { route: any, navigation: any }) {
+  
+  // Recuperiamo l'eventuale parametro di modifica passato dalla rotta precedente
+  const esameDaModificare = route.params?.esameDaModificare;
+
   const [titolo, setTitolo] = useState('');
   const [data, setData] = useState('');
-  const [tipologia, setTipologia] = useState(''); // Scritto, Orale, Progetto
+  const [tipologia, setTipologia] = useState(''); 
   const [note, setNote] = useState('');
 
-  // FUNZIONE ASINCRONA DI SALVATAGGIO REALE
+  // Precompilazione campi in modalità modifica
+  useEffect(() => {
+    if (esameDaModificare) {
+      setTitolo(esameDaModificare.titolo || '');
+      setData(esameDaModificare.data || '');
+      setTipologia(esameDaModificare.tipologia || '');
+      setNote(esameDaModificare.note || '');
+    }
+  }, [esameDaModificare]);
+
   const handleSalvaEsame = async () => {
     if (!titolo.trim()) {
       Alert.alert("Errore", "Il nome dell'esame è obbligatorio!");
@@ -22,30 +33,28 @@ export default function NuovoEsameScreen({ navigation }: { navigation: any }) {
       return;
     }
 
-    // Creiamo l'oggetto COERENTE con i requisiti d'esame
-    const nuovoEsame = {
-      id: 'e' + Date.now(),
-      corso_id: 'c2', // Collegato a un ID corso del mock/storage
+    const esameSalvato = {
+      id: esameDaModificare ? esameDaModificare.id : 'e' + Date.now(),
+      corso_id: esameDaModificare ? esameDaModificare.corso_id : 'c2', 
       titolo: titolo.trim(),
       data: data || '2026-06-18', 
       tipologia: tipologia.trim(),
-      priorita: 'Alta',
-      stato: 'programmato', 
+      priorita: esameDaModificare ? esameDaModificare.priorita : 'Alta',
+      stato: esameDaModificare ? esameDaModificare.stato : 'programmato', 
       note: note.trim(),
-      voto_risultato: null, 
+      voto_risultato: esameDaModificare ? esameDaModificare.voto_risultato : null, 
     };
 
     try {
-      console.log("Salvataggio esame in corso...", nuovoEsame);
+      if (esameDaModificare) {
+        await aggiornaEsame(esameSalvato);
+        Alert.alert("Successo", "Esame modificato con successo!");
+      } else {
+        await salvaNuovoEsame(esameSalvato);
+        Alert.alert("Successo", "Esame aggiunto alla pianificazione!");
+      }
       
-      // Eseguiamo la persistenza asincrona reale su AsyncStorage
-      await salvaNuovoEsame(nuovoEsame);
-
-      Alert.alert("Successo", "Esame aggiunto alla pianificazione!");
-      
-      // PASSO 2: Sostituiamo router.back() con il metodo nativo dello Stack (Slide pag. 16)
       navigation.goBack(); 
-      
     } catch (error) {
       Alert.alert("Errore", "Impossibile salvare l'esame sul dispositivo.");
       console.error(error);
@@ -53,7 +62,7 @@ export default function NuovoEsameScreen({ navigation }: { navigation: any }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>Titolo Esame / Scadenza *</Text>
       <TextInput style={styles.input} placeholder="Es: Presentazione Script Python" value={titolo} onChangeText={setTitolo} />
 
@@ -67,7 +76,7 @@ export default function NuovoEsameScreen({ navigation }: { navigation: any }) {
       <TextInput style={[styles.input, { height: 60 }]} placeholder="Es: Portare il PC..." multiline value={note} onChangeText={setNote} />
 
       <TouchableOpacity style={styles.btnSalva} onPress={handleSalvaEsame}>
-        <Text style={styles.btnText}>Salva Esame</Text>
+        <Text style={styles.btnText}>{esameDaModificare ? "Salva Modifiche" : "Salva Esame"}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -77,6 +86,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', padding: 20 },
   label: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 5, marginTop: 15 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: '#f9f9f9' },
-  btnSalva: { backgroundColor: '#177AD5', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 30 },
+  btnSalva: { backgroundColor: '#FF5252', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 30 },
   btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });
