@@ -1,39 +1,68 @@
-import React, {useState} from 'react';
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
-import { BarChart, PieChart, LineChart } from 'react-native-gifted-charts';
+import { useIsFocused } from '@react-navigation/native'; // Rileva quando lo schermo diventa attivo
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 
+// Importiamo le funzioni reali dello storage locale
+import { getAttivita, getCorsi, getEsami } from '../constants/storage';
 // ----------------- DATI FITTIZI (Mock Data) -----------------
 
-import { mockAttivita, mockCorsi, mockEsami, mockTempiStudio } from '../constants/mockData';
-import { parse } from 'react-native-svg';
+import { mockTempiStudio } from '../constants/mockData';
 
 export default function DashboardScreen() {
+  const isFocused = useIsFocused(); // Restituisce true se l'utente si trova su questa Tab
+  const [mostraVoti, setMostraVoti] = useState(false); // Stato per lo switch dei grafici
 
-//STATO PER IL TOGLEL DELLA VISTA (es. tra Grafico a Barre e Lineare)
-const [mostraVoti, setMostraVoti] = useState(false); // false = Grafico a Barre (ore di studio), true = Grafico Lineare (voti esami)
+  // Stati per ospitare i dati reali recuperati dal dispositivo
+  const [corsi, setCorsi] = useState([]);
+  const [esami, setEsami] = useState([]);
+  const [attivita, setAttivita] = useState([]);
+  const [isLoading, setIsLoading] = useState(true); // Schermata di caricamento iniziale
 
-//--------Calcoli Dinamici dei Dati per i Grafici---------
+  // Effetto per caricare i dati dal dispositivo ogni volta che lo schermo diventa attivo
+  useEffect(() => {
+    const caricaDatiDispositivo = async () => {
+      if (isFocused) {
+        setIsLoading(true);
+        try {
+          // Eseguiamo il recupero parallelo di tutte le tabelle locali
+          const [datiCorsi, datiEsami, datiAttivita] = await Promise.all([
+            getCorsi(),
+            getEsami(),
+            getAttivita()
+          ]);
+
+          setCorsi(datiCorsi || []);
+          setEsami(datiEsami || []);
+          setAttivita(datiAttivita || []);
+        } catch (error) {
+          console.error("Errore nel caricamento dei dati del cruscotto:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    caricaDatiDispositivo();
+  }, [isFocused]); // Riesegue la funzione ogni volta che lo schermo torna in primo piano
+
+//Calcoli Dinamici dei Dati per i Grafici
 //[1] MEDIA  PONDERATA:
-//1.1 Calcolo CFU Guadagnati
-const corsiCompletati = mockCorsi.filter(corso => corso.stato === 'completato');
+const corsiCompletati = corsi.filter(corso => corso.stato === 'completato');
 const cfuGuadagnati = corsiCompletati.reduce((tot, corso) => tot + corso.cfu, 0);
-
-//1.2 Calcolo CFU totali del piano di studi
-const cfuTotali = mockCorsi.reduce((tot, corso) => tot + corso.cfu, 0);
-
-//1.3 Calcolo Media Ponderata
+const cfuTotali = corsi.reduce((tot, corso) => tot + corso.cfu, 0);
 const sommaPonerata = corsiCompletati.reduce((tot, corso) => tot + (corso.voto_ottenuto * corso.cfu), 0);
 const mediaAttuale = cfuGuadagnati > 0 ? (sommaPonerata / cfuGuadagnati).toFixed(2) : 0.00;
 
 //[2] PROSSIME SCADENZE:
 //2.1 Calcolo prossime Scadenze (numero diattività non completate)
-const prossimeScadenze = mockAttivita.filter(attivita => !attivita.completata).length;
+const prossimeScadenze = attivita.filter(attivita => !attivita.completata).length;
 
 //2.2 Logica per prendere le  attività più vicine alla data odierna (ordinando per data)
 const oggi = new Date().toISOString().split('T')[0]; // Otteniamo la data odierna in formato 'YYYY-MM-DD'
-const attivitaProcessate = mockAttivita
+const attivitaProcessate = attivita
   .map(attivita => {
-    const corso = mockCorsi.find(c => c.id === attivita.corso_id);
+    const corso = corsi.find(c => c.id === attivita.corso_id);
 
     //Selezione stato e colore
     let stato = 'da iniziare';
@@ -70,9 +99,9 @@ const attivitaProcessate = mockAttivita
 
 //[3] PROGRESSO ESAMI:
 //3.1 Calcolo percentuale esami superati (grafico a torta)
-const esamiSuperati = mockEsami.filter(esame => esame.stato === 'superato').length;
-const esamiProgrammati = mockEsami.filter(esame => esame.stato === 'programmato').length;
-const esamiDaInziare = mockCorsi.length - (esamiSuperati + esamiProgrammati); // Consideriamo "da iniziare" come quelli dei corsi che non hanno ancora un esame in programma
+const esamiSuperati = esami.filter(esame => esame.stato === 'superato').length;
+const esamiProgrammati = esami.filter(esame => esame.stato === 'programmato').length;
+const esamiDaInziare = corsi.length - (esamiSuperati + esamiProgrammati); // Consideriamo "da iniziare" come quelli dei corsi che non hanno ancora un esame in programma
 
 //3.2 Conversione in formato adatto per il grafico a torta
 const pieData = [
@@ -90,7 +119,7 @@ const pieData = [
   const etichetteGiorni = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
   // 4.2 Calcoliamo il TEMPO PIANIFICATO dalle Attività (convertendo i minuti in ore)
-  mockAttivita.forEach(attivita => {
+  attivita.forEach(attivita => {
     if (attivita.data_ora_inizio && attivita.tempo_stimato_minuti) {
       const dataInizio = new Date(attivita.data_ora_inizio);
       
@@ -134,7 +163,7 @@ const pieData = [
   const maxOreGrafico = maxAssoluto > 0 ? Math.ceil(maxAssoluto) + 1 : 8;
 
   //[5] LOGICA PER GRAFICO A LINEE (voti esami nel tempo):
-  const esamiSuperatiOrdinati = [...mockEsami]
+  const esamiSuperatiOrdinati = [...esami]
     .filter(esame => esame.stato === 'superato' && esame.voto_risultato)
     .sort((a, b) => new Date(a.data) - new Date(b.data)); // Ordina per data
 
@@ -143,7 +172,7 @@ const pieData = [
     let totalCfu = 0;
 
     const dataMediaPonderata = esamiSuperatiOrdinati.map((esame, index) => {
-      const corso = mockCorsi.find(c => c.id === esame.corso_id);
+      const corso = corsi.find(c => c.id === esame.corso_id);
       sommaPonderata += (esame.voto_risultato * (corso ? corso.cfu : 0));
       totalCfu += (corso ? corso.cfu : 0);
       return {
@@ -166,7 +195,7 @@ const pieData = [
   // 1. Avanzamento temporale dei corsi (Giorni passati vs Giorni totali)
   const oggiCorrente = new Date(); 
 
-  const progressGiorniCorsi = mockCorsi
+  const progressGiorniCorsi = corsi
     .filter(corso => corso.data_inizio && corso.data_fine && corso.stato === 'in corso') // Filtriamo solo i corsi attivi
     .map(corso => {
       const inizio = new Date(corso.data_inizio);
@@ -193,7 +222,7 @@ const pieData = [
 
   // 2. Classifica dei corsi con più attività aperte (non completate)
   const attivitaApertePerCorso = {};
-  mockAttivita.forEach(att => {
+  attivita.forEach(att => {
     if (!att.completata) {
       attivitaApertePerCorso[att.corso_id] = (attivitaApertePerCorso[att.corso_id] || 0) + 1;
     }
@@ -201,7 +230,7 @@ const pieData = [
 
   const classificaCorsiAperti = Object.keys(attivitaApertePerCorso)
     .map(corsoId => {
-      const corso = mockCorsi.find(c => c.id === corsoId);
+      const corso = corsi.find(c => c.id === corsoId);
       return {
         id: corsoId,
         nome: corso ? corso.nome : 'Sconosciuto',
@@ -210,6 +239,18 @@ const pieData = [
     })
     .sort((a, b) => b.conteggio - a.conteggio) // Ordina dal più alto al più basso
     .slice(0, 3); // Prende solo i primi 3 per non allungare la card
+
+  // Se i dati sono in fase di lettura, mostra un indicatore di attesa circolare
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#177AD5" />
+        <Text style={{ marginTop: 10, color: '#64748B', fontWeight: '500' }}>
+          Aggiornamento cruscotto...
+        </Text>
+      </View>
+    );
+  }
 
 // ----------------- COMPONENTE SCHERMATA -----------------
   return (
