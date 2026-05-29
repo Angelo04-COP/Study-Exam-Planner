@@ -137,7 +137,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             setSelectedCourse('Nessuno');
             setActivityDate(date);
         }
-    }, [taskToEdit, isVisible]);
+    }, [taskToEdit, isVisible, date, courses]);
 
     const handleSave = () => {
         if(!title.trim()) return;

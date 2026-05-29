@@ -16,6 +16,9 @@ export default function AcademicScreen() {
   const [esami, setEsami] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- NUOVO STATO: TESTO DELLA RICERCA ---
+  const [searchQuery, setSearchQuery] = useState('');
+
   // --- STATI PER IL MODALE GRAFICO DI VERBALIZZAZIONE REALE ---
   const [isVerbalizzaModalVisible, setVerbalizzaModalVisible] = useState(false);
   const [esameSelezionato, setEsameSelezionato] = useState(null);
@@ -30,7 +33,7 @@ export default function AcademicScreen() {
       
       const oggiStr = new Date().toISOString().split('T')[0];
 
-      // Calcolo dello stato temporale dinamico basato sulle date (Requisito di Traccia)
+      // Calcolo dello stato temporale dinamico basato sulle date
       const corsiAggiornatiDinamici = (corsiSalvati || []).map(corso => {
         if (corso.data_inizio && corso.data_fine) {
           let nuovoStato = corso.stato;
@@ -59,18 +62,37 @@ export default function AcademicScreen() {
     if (isFocused) caricaDatiCarriera();
   }, [isFocused]);
 
-  // --- 2. APERTURA INTERFACCIA MODALE INTEGRATA ---
-  const apriVerbalizzazione = (esame) => {
-    // Troviamo il corso reale collegato nel database per mostrarlo nel modale
-    const corsoTrovato = corsi.find(c => c.id === esame.corso_id);
+  // --- 2. LOGICA DI RICERCA E FILTRAGGIO ISTANTANEO ---
+  // Filtriamo i corsi in base al nome o al docente inserito nella barra di ricerca
+  const corsiFiltrati = corsi.filter(corso => {
+    const query = searchQuery.toLowerCase();
+    const nomeMatch = corso.nome && corso.nome.toLowerCase().includes(query);
+    const docenteMatch = corso.docente && corso.docente.toLowerCase().includes(query);
+    return nomeMatch || docenteMatch;
+  });
+
+  // Filtriamo gli esami in base al titolo o al nome del corso collegato
+  const esamiFiltrati = esami.filter(esame => {
+    const query = searchQuery.toLowerCase();
+    const titoloMatch = esame.titolo && esame.titolo.toLowerCase().includes(query);
     
+    const corsoCollegato = corsi.find(c => c.id === esame.corso_id);
+    const nomeCorsoMatch = corsoCollegato && corsoCollegato.nome.toLowerCase().includes(query);
+    
+    return titoloMatch || nomeCorsoMatch;
+  });
+
+
+  // --- 3. APERTURA INTERFACCIA MODALE INTEGRATA ---
+  const apriVerbalizzazione = (esame) => {
+    const corsoTrovato = corsi.find(c => c.id === esame.corso_id);
     setEsameSelezionato(esame);
     setCorsoAssociatoAllEsame(corsoTrovato);
-    setVotoInserito('30'); // Default standard accademico
+    setVotoInserito('30'); 
     setVerbalizzaModalVisible(true);
   };
 
-  // --- 3. LOGICA DI VERBALIZZAZIONE CON REALE AGGIORNAMENTO DEL CORSO ---
+  // --- 4. LOGICA DI VERBALIZZAZIONE CON REALE AGGIORNAMENTO DEL CORSO ---
   const confermaEsitoDettagliato = async (esito) => {
     if (!esameSelezionato) return;
 
@@ -78,7 +100,6 @@ export default function AcademicScreen() {
 
     if (esito === 'SUPERATO') {
       const votoNum = parseInt(votoInserito, 10);
-      // Validazione formale del voto secondo i vincoli richiesti dal progetto
       if (isNaN(votoNum) || votoNum < 18 || votoNum > 30) {
         Alert.alert("Errore", "Inserisci un voto valido compreso tra 18 e 30.");
         return;
@@ -86,10 +107,9 @@ export default function AcademicScreen() {
       votoFinalizzato = votoNum;
     }
 
-    // Passiamo l'ID del corso reale associato per far sì che lo storage aggiorni la scheda del corso
     const success = await verbalizzaEsitoEsame(
       esameSelezionato.id, 
-      esameSelezionato.corso_id, // L'ID reale del corso (es. 'c1')
+      esameSelezionato.corso_id, 
       esito, 
       votoFinalizzato
     );
@@ -98,11 +118,11 @@ export default function AcademicScreen() {
       setVerbalizzaModalVisible(false);
       setEsameSelezionato(null);
       setCorsoAssociatoAllEsame(null);
-      caricaDatiCarriera(); // Aggiorna istantaneamente i grafici e la lista
+      caricaDatiCarriera(); 
     }
   };
 
-  // --- 4. LOGICA DI ELIMINAZIONE COMPATIBILE WEB/MOBILE ---
+  // --- 5. LOGICA DI ELIMINAZIONE COMPATIBILE WEB/MOBILE ---
   const confermEliminazioneCorso = (id, nome) => {
     if (typeof window !== 'undefined' && window.confirm) {
       const confermaWeb = window.confirm(`Sei sicuro di voler eliminare il corso "${nome}"?`);
@@ -145,7 +165,7 @@ export default function AcademicScreen() {
     if (success) setEsami(esami.filter(e => e.id !== id));
   };
 
-  // --- 5. HELPERS BADGE ---
+  // --- HELPERS BADGE ---
   const getColoreStatoCorso = (stato) => {
     switch (stato?.toLowerCase()) {
       case 'completato': return '#4CAF50';
@@ -177,18 +197,38 @@ export default function AcademicScreen() {
         {/* HEADER ROW */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>CARRIERA</Text>
-          <TouchableOpacity style={styles.switchContainer} onPress={() => setMostraEsami(!mostraEsami)} activeOpacity={0.9}>
+          <TouchableOpacity style={styles.switchContainer} onPress={() => {
+            setMostraEsami(!mostraEsami);
+            setSearchQuery(''); // Svuota la ricerca quando si cambia tab
+          }} activeOpacity={0.9}>
             <Text style={[styles.switchText, !mostraEsami && styles.switchTextActive]}>Corsi</Text>
             <Text style={[styles.switchText, mostraEsami && styles.switchTextActive]}>Esami</Text>
             <View style={[styles.switchBall, mostraEsami ? styles.switchBallRight : styles.switchBallLeft]} />
           </TouchableOpacity>
         </View>
 
+        {/* --- BARRA DI RICERCA --- */}
+        <View style={styles.searchBarContainer}>
+          <Ionicons name="search" size={20} color="#94a3b8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={!mostraEsami ? "Cerca un corso per nome o docente..." : "Cerca un esame..."}
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={20} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+        </View>
+
         {!mostraEsami ? (
           /* ================= VISTA CORSI ================= */
           <View style={styles.listaContainer}>
-            {corsi.length > 0 ? (
-              corsi.map((corso) => (
+            {corsiFiltrati.length > 0 ? (
+              corsiFiltrati.map((corso) => (
                 <TouchableOpacity key={corso.id} style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('CourseDetail', { courseData: corso, isExam: false })}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1, paddingRight: 10, alignItems: 'flex-start' }}>
@@ -219,14 +259,16 @@ export default function AcademicScreen() {
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={styles.emptyText}>Nessun corso aggiunto alla carriera.</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery.length > 0 ? "Nessun risultato trovato per la tua ricerca." : "Nessun corso aggiunto alla carriera."}
+              </Text>
             )}
           </View>
         ) : (
           /* ================= VISTA ESAMI ================= */
           <View style={styles.listaContainer}>
-            {esami.length > 0 ? (
-              esami.map((esame) => {
+            {esamiFiltrati.length > 0 ? (
+              esamiFiltrati.map((esame) => {
                 const corsoCollegato = corsi.find(c => c.id === esame.corso_id);
                 return (
                   <TouchableOpacity key={esame.id} style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('CourseDetail', { courseData: esame, isExam: true })}>
@@ -274,7 +316,9 @@ export default function AcademicScreen() {
                 );
               })
             ) : (
-              <Text style={styles.emptyText}>Nessun esame programmato.</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery.length > 0 ? "Nessun risultato trovato per la tua ricerca." : "Nessun esame programmato."}
+              </Text>
             )}
           </View>
         )}
@@ -296,7 +340,6 @@ export default function AcademicScreen() {
                 <Text style={{ fontWeight: 'bold', color: '#1E293B' }}>{esameSelezionato?.titolo}</Text>
               </Text>
               
-              {/* Box informativo che mostra il corso reale che verrà modificato */}
               <View style={styles.boxCorsoIncrociato}>
                 <Ionicons name="school" size={16} color="#177AD5" />
                 <Text style={styles.testoBoxCorso}>
@@ -305,7 +348,6 @@ export default function AcademicScreen() {
               </View>
             </View>
 
-            {/* SEZIONE INPUT VOTO */}
             <View style={styles.votoInputContainer}>
               <Text style={styles.votoLabel}>Se hai ACCETTATO il voto, inseriscilo qui sotto:</Text>
               <TextInput 
@@ -314,11 +356,9 @@ export default function AcademicScreen() {
                 onChangeText={setVotoInserito}
                 keyboardType="numeric"
                 maxLength={2}
-                placeholder="30"
               />
             </View>
 
-            {/* OPZIONI DI REGISTRAZIONE DINAMICA */}
             <View style={styles.modalActionsStack}>
               <TouchableOpacity 
                 style={[styles.modalButton, { backgroundColor: '#4CAF50' }]} 
@@ -361,6 +401,31 @@ const styles = StyleSheet.create({
   switchBall: { position: 'absolute', height: 30, width: 66, borderRadius: 15, backgroundColor: '#475569', zIndex: 1, top: 3 },
   switchBallLeft: { left: 3 },
   switchBallRight: { right: 3 },
+  
+  // --- STILI BARRA DI RICERCA ---
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginBottom: 24, // Spazio sotto la barra prima delle liste
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#333',
+  },
+
   listaContainer: { gap: 16 },
   card: { backgroundColor: 'white', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 3 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
@@ -379,7 +444,6 @@ const styles = StyleSheet.create({
   esitoTesto: { fontSize: 13, fontWeight: '600', color: '#4CAF50' },
   emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 30, fontSize: 15, fontStyle: 'italic' },
   
-  // --- NUOVI STILI DEL SELETTORE GRAFICO ---
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: 'white', width: '85%', borderRadius: 20, padding: 24, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B', marginBottom: 8 },

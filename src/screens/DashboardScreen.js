@@ -1,4 +1,4 @@
-import { useIsFocused } from '@react-navigation/native'; // Rileva quando lo schermo diventa attivo
+import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
@@ -6,32 +6,27 @@ import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 // Importiamo le funzioni reali dello storage locale
 import { getAttivita, getCorsi, getEsami } from '../constants/storage';
 // ----------------- DATI FITTIZI (Mock Data) -----------------
-
 import { mockTempiStudio } from '../constants/mockData';
 
 export default function DashboardScreen() {
-  const isFocused = useIsFocused(); // Restituisce true se l'utente si trova su questa Tab
-  const [mostraVoti, setMostraVoti] = useState(false); // Stato per lo switch dei grafici
+  const isFocused = useIsFocused(); 
+  const [mostraVoti, setMostraVoti] = useState(false); 
 
   // Stati per ospitare i dati reali recuperati dal dispositivo
   const [corsi, setCorsi] = useState([]);
   const [esami, setEsami] = useState([]);
   const [attivita, setAttivita] = useState([]);
-  const [isLoading, setIsLoading] = useState(true); // Schermata di caricamento iniziale
+  const [isLoading, setIsLoading] = useState(true); 
 
-  // Effetto per caricare i dati dal dispositivo ogni volta che lo schermo diventa attivo
+  // Effetto per caricare i dati dal dispositivo
   useEffect(() => {
     const caricaDatiDispositivo = async () => {
       if (isFocused) {
         setIsLoading(true);
         try {
-          // Eseguiamo il recupero parallelo di tutte le tabelle locali
           const [datiCorsi, datiEsami, datiAttivita] = await Promise.all([
-            getCorsi(),
-            getEsami(),
-            getAttivita()
+            getCorsi(), getEsami(), getAttivita()
           ]);
-
           setCorsi(datiCorsi || []);
           setEsami(datiEsami || []);
           setAttivita(datiAttivita || []);
@@ -42,171 +37,169 @@ export default function DashboardScreen() {
         }
       }
     };
-
     caricaDatiDispositivo();
-  }, [isFocused]); // Riesegue la funzione ogni volta che lo schermo torna in primo piano
+  }, [isFocused]);
 
-//Calcoli Dinamici dei Dati per i Grafici
-//[1] MEDIA  PONDERATA:
-const corsiCompletati = corsi.filter(corso => corso.stato === 'completato');
-const cfuGuadagnati = corsiCompletati.reduce((tot, corso) => tot + corso.cfu, 0);
-const cfuTotali = corsi.reduce((tot, corso) => tot + corso.cfu, 0);
-const sommaPonerata = corsiCompletati.reduce((tot, corso) => tot + (corso.voto_ottenuto * corso.cfu), 0);
-const mediaAttuale = cfuGuadagnati > 0 ? (sommaPonerata / cfuGuadagnati).toFixed(2) : 0.00;
+  // ==========================================================
+  // [1] MEDIA PONDERATA (PULITA)
+  // ==========================================================
+  const corsiCompletati = corsi.filter(
+    corso => corso.stato === 'completato' && corso.voto_ottenuto !== null && corso.voto_ottenuto !== undefined
+  );
 
-//[2] PROSSIME SCADENZE:
-//2.1 Calcolo prossime Scadenze (numero diattività non completate)
-const prossimeScadenze = attivita.filter(attivita => !attivita.completata).length;
+  const cfuGuadagnati = corsiCompletati.reduce((tot, corso) => tot + Number(corso.cfu || 0), 0);
+  const cfuTotali = corsi.reduce((tot, corso) => tot + Number(corso.cfu || 0), 0);
 
-//2.2 Logica per prendere le  attività più vicine alla data odierna (ordinando per data)
-const oggi = new Date().toISOString().split('T')[0]; // Otteniamo la data odierna in formato 'YYYY-MM-DD'
-const attivitaProcessate = attivita
-  .map(attivita => {
-    const corso = corsi.find(c => c.id === attivita.corso_id);
+  const sommaPonderata = corsiCompletati.reduce(
+    (tot, corso) => tot + (Number(corso.voto_ottenuto) * Number(corso.cfu || 0)), 
+    0
+  );
+  const mediaAttuale = cfuGuadagnati > 0 ? (sommaPonderata / cfuGuadagnati).toFixed(2) : "0.00";
 
-    //Selezione stato e colore
-    let stato = 'da iniziare';
-    let colore = '#8EBBF3';
-    let prioritaOrdine = 2;
-    
-    if (attivita.completata) {
-      stato = 'completata';
-      colore = '#4CAF50'; // Verde
-      prioritaOrdine = 3;
-    } else if(attivita.data_ora_scadenza < oggi) {
-      stato = 'scaduta';
-      colore = '#FF5252';
-      prioritaOrdine = 1;
-    }
+  // ==========================================================
+  // [2] PROSSIME SCADENZE
+  // ==========================================================
+  const prossimeScadenze = attivita.filter(a => !a.completata).length;
 
-    return{
-      ...attivita,
-      nome_corso: corso ? corso.nome : 'Corso Sconosciuto',
-      statoLabel: stato,
-      statoColore: colore,
-      prioritaOrdine: prioritaOrdine,
-    };
-  })
-  .sort((a, b) => {
-    // Ordina prima per priorità (scadute, da iniziare, completate) e poi per data
-    if (a.prioritaOrdine !== b.prioritaOrdine) {
-      return a.prioritaOrdine - b.prioritaOrdine; // Ordina per priorità
-    }
-    return new Date(a.data_ora_scadenza) - new Date(b.data_ora_scadenza); // Se stessa priorità, ordina per data
-  })
-  .slice(0, 8); // Prendi solo le prime 8 attività più vicine
+  const oggi = new Date().toISOString().split('T')[0]; 
+  const attivitaProcessate = attivita
+    .map(att => {
+      const corso = corsi.find(c => c.id === att.corso_id);
+      let stato = 'da iniziare';
+      let colore = '#8EBBF3';
+      let prioritaOrdine = 2;
+      
+      if (att.completata) {
+        stato = 'completata';
+        colore = '#4CAF50'; 
+        prioritaOrdine = 3;
+      } else if(att.data_ora_scadenza < oggi) {
+        stato = 'scaduta';
+        colore = '#FF5252';
+        prioritaOrdine = 1;
+      }
+
+      return {
+        ...att,
+        nome_corso: corso ? corso.nome : 'Corso Sconosciuto',
+        statoLabel: stato,
+        statoColore: colore,
+        prioritaOrdine: prioritaOrdine,
+      };
+    })
+    .sort((a, b) => {
+      if (a.prioritaOrdine !== b.prioritaOrdine) return a.prioritaOrdine - b.prioritaOrdine;
+      return new Date(a.data_ora_scadenza) - new Date(b.data_ora_scadenza); 
+    })
+    .slice(0, 8); 
+
+  // ==========================================================
+  // [3] PROGRESSO ESAMI (Con Protezione Crash)
+  // ==========================================================
+  const esamiSuperati = esami.filter(e => e.stato === 'superato').length;
+  const esamiProgrammati = esami.filter(e => e.stato === 'programmato').length;
+  const esamiDaInziare = Math.max(0, corsi.length - (esamiSuperati + esamiProgrammati)); 
+
+  const pieData = [
+    { value: esamiSuperati, color: '#177AD5', text:'Superati' },
+    { value: esamiProgrammati, color: '#8EBBF3', text:'Programmati' },
+    { value: esamiDaInziare, color: '#E2E2E2', text:'Da Iniziare' },
+  ];
   
+  // Se non c'è assolutamente niente da mostrare, passiamo un cerchio grigio per non far esplodere la libreria
+  const pieDataSicuri = (esamiSuperati === 0 && esamiProgrammati === 0 && esamiDaInziare === 0) 
+    ? [{ value: 1, color: '#E2E2E2' }] 
+    : pieData;
 
-//[3] PROGRESSO ESAMI:
-//3.1 Calcolo percentuale esami superati (grafico a torta)
-const esamiSuperati = esami.filter(esame => esame.stato === 'superato').length;
-const esamiProgrammati = esami.filter(esame => esame.stato === 'programmato').length;
-const esamiDaInziare = corsi.length - (esamiSuperati + esamiProgrammati); // Consideriamo "da iniziare" come quelli dei corsi che non hanno ancora un esame in programma
-
-//3.2 Conversione in formato adatto per il grafico a torta
-const pieData = [
-  { value: esamiSuperati, color: '#177AD5',text:'Superati' },
-  { value: esamiProgrammati, color: '#8EBBF3',text:'Programmati' },
-  { value: esamiDaInziare, color: '#E2E2E2',text:'Da Iniziare' },
-];
-
-
-//[4] LOGICA PER IL GRAFICO A BARRE (ore di studio settimanali):
-  
-  // 4.1 Inizializziamo gli array per i 7 giorni (Lunedì = 0 ... Domenica = 6)
+  // ==========================================================
+  // [4] GRAFICO A BARRE (Ore)
+  // ==========================================================
   const orePianificate = [0, 0, 0, 0, 0, 0, 0];
   const oreEffettive = [0, 0, 0, 0, 0, 0, 0];
   const etichetteGiorni = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
-  // 4.2 Calcoliamo il TEMPO PIANIFICATO dalle Attività (convertendo i minuti in ore)
-  attivita.forEach(attivita => {
-    if (attivita.data_ora_inizio && attivita.tempo_stimato_minuti) {
-      const dataInizio = new Date(attivita.data_ora_inizio);
-      
-      // Trasformiamo l'indice del giorno (Domenica=0) nel nostro formato (Lunedì=0)
+  attivita.forEach(att => {
+    if (att.data_ora_inizio && att.tempo_stimato_minuti) {
+      const dataInizio = new Date(att.data_ora_inizio);
       const giornoIndice = (dataInizio.getDay() + 6) % 7; 
-      
-      // Aggiungiamo le ore stimate per quel giorno
-      orePianificate[giornoIndice] += (attivita.tempo_stimato_minuti / 60);
+      orePianificate[giornoIndice] += (att.tempo_stimato_minuti / 60);
     }
   });
 
-  // 4.3 Calcoliamo il TEMPO EFFETTIVO dai log del Timer
   mockTempiStudio.forEach(logTimer => {
     if (logTimer.data && logTimer.ore_studiate) {
       const dataLog = new Date(logTimer.data);
       const giornoIndice = (dataLog.getDay() + 6) % 7;
-      
       oreEffettive[giornoIndice] += logTimer.ore_studiate;
     }
   });
 
-  // 4.4 Creiamo la struttura a "Barre Sovrapposte" per il grafico
   const stackData = etichetteGiorni.map((label, index) => {
     const effettive = oreEffettive[index];
     const pianificate = orePianificate[index];
-    
-    // Calcoliamo se c'è un "gap" tra quanto studiato e quanto programmato
-    // Se abbiamo studiato di più del programmato, il rimanente è 0.
     const rimanente = effettive < pianificate ? (pianificate - effettive) : 0;
-
     return {
       label: label,
       stacks: [
-        { value: effettive, color: '#177AD5' }, // Base blu scuro: tempo reale
-        { value: rimanente, color: '#A7D7F9' }, // Cima azzurra: gap mancante all'obiettivo
+        { value: effettive, color: '#177AD5' }, 
+        { value: rimanente, color: '#A7D7F9' }, 
       ],
     };
   });
-  // Calcoliamo il tetto massimo dinamico dell'asse Y (il valore più alto tra pianificato ed effettivo + margine)
+  
   const maxAssoluto = Math.max(...orePianificate, ...oreEffettive);
   const maxOreGrafico = maxAssoluto > 0 ? Math.ceil(maxAssoluto) + 1 : 8;
 
-  //[5] LOGICA PER GRAFICO A LINEE (voti esami nel tempo):
+  // ==========================================================
+  // [5] GRAFICO A LINEE (Con Correzione Nomi Variabili)
+  // ==========================================================
   const esamiSuperatiOrdinati = [...esami]
     .filter(esame => esame.stato === 'superato' && esame.voto_risultato)
-    .sort((a, b) => new Date(a.data) - new Date(b.data)); // Ordina per data
+    .sort((a, b) => new Date(a.data) - new Date(b.data)); 
 
-    let sommaVoti = 0;
-    let sommaPonderata = 0;
-    let totalCfu = 0;
+  let sommaVoti = 0;
+  // ATTENZIONE QUI: Cambiato il nome per non confliggere con la sommaPonderata della riga 59
+  let sommaPonderataGrafico = 0; 
+  let totalCfu = 0;
 
-    const dataMediaPonderata = esamiSuperatiOrdinati.map((esame, index) => {
-      const corso = corsi.find(c => c.id === esame.corso_id);
-      sommaPonderata += (esame.voto_risultato * (corso ? corso.cfu : 0));
-      totalCfu += (corso ? corso.cfu : 0);
-      return {
-        value: parseFloat((sommaPonderata / totalCfu).toFixed(2)), 
-        label: esame.data.split('-')[2] + '/' + esame.data.split('-')[1] 
-      }; // Etichetta "MM/DD"
-    });
+  const dataMediaPonderataRaw = esamiSuperatiOrdinati.map((esame, index) => {
+    const corso = corsi.find(c => c.id === esame.corso_id);
+    sommaPonderataGrafico += (esame.voto_risultato * (corso ? corso.cfu : 0));
+    totalCfu += (corso ? corso.cfu : 0);
+    return {
+      value: totalCfu > 0 ? parseFloat((sommaPonderataGrafico / totalCfu).toFixed(2)) : 0, 
+      label: esame.data ? esame.data.split('-')[2] + '/' + esame.data.split('-')[1] : '' 
+    }; 
+  });
 
-    const dataMediaAritmetica = esamiSuperatiOrdinati.map((esame, index) => {
-      sommaVoti += esame.voto_risultato;
-      return {
-        value: parseFloat((sommaVoti / (index + 1)).toFixed(2)),
-        hideDataPoint: false // Mostra il punto dati per ogni esame superato
-      };
-    });
+  const dataMediaAritmeticaRaw = esamiSuperatiOrdinati.map((esame, index) => {
+    sommaVoti += esame.voto_risultato;
+    return {
+      value: parseFloat((sommaVoti / (index + 1)).toFixed(2)),
+      hideDataPoint: false 
+    };
+  });
+
+  // PROTEZIONE ANTI-CRASH: Se abbiamo 0 esami superati, inseriamo un punto "finto" a zero
+  const dataMediaPonderata = dataMediaPonderataRaw.length > 0 ? dataMediaPonderataRaw : [{ value: 0, label: '-' }];
+  const dataMediaAritmetica = dataMediaAritmeticaRaw.length > 0 ? dataMediaAritmeticaRaw : [{ value: 0, label: '-' }];
 
 
-// --- [D] INSIGHTS CORSI (Requisiti Traccia) ---
-  
-  // 1. Avanzamento temporale dei corsi (Giorni passati vs Giorni totali)
+  // ==========================================================
+  // [D] INSIGHTS CORSI
+  // ==========================================================
   const oggiCorrente = new Date(); 
 
   const progressGiorniCorsi = corsi
-    .filter(corso => corso.data_inizio && corso.data_fine && corso.stato === 'in corso') // Filtriamo solo i corsi attivi
+    .filter(corso => corso.data_inizio && corso.data_fine && corso.stato === 'in corso') 
     .map(corso => {
       const inizio = new Date(corso.data_inizio);
       const fine = new Date(corso.data_fine);
       
-      // Calcoliamo la differenza in millisecondi e la convertiamo in giorni
       const millisecondiInGiorno = 1000 * 60 * 60 * 24;
       const giorniTotali = Math.max(1, Math.round((fine - inizio) / millisecondiInGiorno));
       const giorniPassati = Math.round((oggiCorrente - inizio) / millisecondiInGiorno);
       
-      // Blocchiamo i valori tra 0 e il totale (nel caso la data odierna sia fuori dal range)
       const giorniEffettivi = Math.max(0, Math.min(giorniPassati, giorniTotali));
       const percentuale = (giorniEffettivi / giorniTotali) * 100;
 
@@ -218,9 +211,8 @@ const pieData = [
         percentuale: percentuale
       };
     })
-    .sort((a, b) => b.percentuale - a.percentuale); // Mostra in alto i corsi più vicini alla fine
+    .sort((a, b) => b.percentuale - a.percentuale); 
 
-  // 2. Classifica dei corsi con più attività aperte (non completate)
   const attivitaApertePerCorso = {};
   attivita.forEach(att => {
     if (!att.completata) {
@@ -237,10 +229,10 @@ const pieData = [
         conteggio: attivitaApertePerCorso[corsoId]
       };
     })
-    .sort((a, b) => b.conteggio - a.conteggio) // Ordina dal più alto al più basso
-    .slice(0, 3); // Prende solo i primi 3 per non allungare la card
+    .sort((a, b) => b.conteggio - a.conteggio) 
+    .slice(0, 3); 
 
-  // Se i dati sono in fase di lettura, mostra un indicatore di attesa circolare
+  // --- CARICAMENTO SCHERMATA ---
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -252,7 +244,7 @@ const pieData = [
     );
   }
 
-// ----------------- COMPONENTE SCHERMATA -----------------
+  // --- RENDERING GRAFICO ---
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.headerTitle}>CRUSCOTTO</Text>
@@ -262,23 +254,17 @@ const pieData = [
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>{mostraVoti ? 'ANDAMENTO VOTI' : 'STUDIO ORE SETTIMANALI'}</Text>
 
-          {/* Pulsante per togglare la vista tra Grafico a Barre e Lineare */}
           <TouchableOpacity 
             style={styles.switchContainer} 
             onPress={() => setMostraVoti(!mostraVoti)}
             activeOpacity={0.9}
           >
-            {/* Testo Opzione Sinistra */}
             <Text style={[styles.switchText, !mostraVoti && styles.switchTextActive]}>
               Tempo
             </Text>
-            
-            {/* Testo Opzione Destra */}
             <Text style={[styles.switchText, mostraVoti && styles.switchTextActive]}>
               Media
             </Text>
-            
-            {/* Il cursore grigio scuro che si sposta a destra o a sinistra */}
             <View style={[
               styles.switchBall, 
               mostraVoti ? styles.switchBallRight : styles.switchBallLeft
@@ -286,7 +272,6 @@ const pieData = [
           </TouchableOpacity>
         </View>
 
-        {/* RENDERING CONDIZIONALE DEL GRAFICO */}
         {!mostraVoti ? (
           <View>
             <View style={styles.chartLegend}>
@@ -340,23 +325,18 @@ const pieData = [
       {/* ----------- SEZIONE 2: RIGA CENTRALE ----------- */}
       <View style={styles.row}>
         
-        {/* Card Sinistra: Grafico Esami */}
         <View style={[styles.card, styles.halfCard]}>
           <Text style={styles.cardTitle}>PROGRESSO ESAMI</Text>
-          
           <View style={styles.pieContent}>
-            {/* Il Grafico PieChart */}
             <View style={styles.pieChartContainer}>
                 <PieChart
                   donut
                   innerRadius={30}
                   radius={50}
-                  data={pieData}
+                  data={pieDataSicuri}
                   overflow="hidden"
                 />
             </View>
-            
-            {/* LEGENDA (sotto il grafico) */}
             <View style={styles.legendContainer}>
               <View style={styles.legendItem}>
                 <Text style={styles.dotSuperati}>●</Text>
@@ -364,7 +344,7 @@ const pieData = [
               </View>
               <View style={styles.legendItem}>
                 <Text style={styles.dotDaSostenere}>●</Text>
-                <Text style={styles.legendText}>Da Sostenere ({esamiProgrammati})</Text>
+                <Text style={styles.legendText}>Programmati ({esamiProgrammati})</Text>
               </View>
               <View style={styles.legendItem}>
                 <Text style={styles.dotDaIniziare}>●</Text>
@@ -374,7 +354,6 @@ const pieData = [
           </View>
         </View>
 
-        {/* Card Destra: Statistiche Testuali */}
         <View style={[styles.card, styles.halfCard]}>
           <Text style={styles.cardTitle}>CFU GUADAGNATI:</Text>
           <Text style={styles.statValue}>{cfuGuadagnati} / {cfuTotali}</Text>
@@ -386,22 +365,17 @@ const pieData = [
           
           <View style={styles.divider} />
           
-          <Text style={styles.cardTitle}>ATTIVITA DA FARE:</Text>
+          <Text style={styles.cardTitle}>ATTIVITÀ DA FARE:</Text>
           <Text style={styles.statValue}>{prossimeScadenze}</Text>
         </View>
-
       </View>
 
-      {/* 1. Card Avanzamento Temporale Corsi (Barre Orizzontali) */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>TIMELINE CORSI ATTIVI</Text>
-        
         <View style={{ marginTop: 10 }}>
           {progressGiorniCorsi.length > 0 ? (
             progressGiorniCorsi.map((item) => (
               <View key={item.id} style={{ marginBottom: 16 }}>
-                
-                {/* Intestazione della barra: Nome Corso e Rapporto Giorni */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                   <Text style={{ fontSize: 13, color: '#334155', fontWeight: '600' }} numberOfLines={1}>
                     {item.nome}
@@ -410,20 +384,16 @@ const pieData = [
                     {item.giorniPassati} / {item.giorniTotali} gg
                   </Text>
                 </View>
-                
-                {/* Il binario grigio di sfondo */}
                 <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-                  {/* La barra blu che avanza con i giorni */}
                   <View 
                     style={{ 
                       height: '100%', 
                       width: `${item.percentuale}%`, 
-                      backgroundColor: item.percentuale > 90 ? '#FF5252' : '#177AD5', // Diventa rossa se manca pochissimo
+                      backgroundColor: item.percentuale > 90 ? '#FF5252' : '#177AD5', 
                       borderRadius: 4 
                     }} 
                   />
                 </View>
-                
               </View>
             ))
           ) : (
@@ -434,41 +404,11 @@ const pieData = [
         </View>
       </View>
 
-        {/* Card Destra: Attività Aperte */}
-        <View style={[styles.card, styles.halfCard]}>
-          <Text style={styles.cardTitle}>ATTIVITÀ APERTE</Text>
-          
-          <View style={{ marginTop: 10 }}>
-            {classificaCorsiAperti.length > 0 ? (
-              classificaCorsiAperti.map((item) => (
-                <View key={item.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#EEEEEE', paddingBottom: 8 }}>
-                  <Text style={{ fontSize: 12, color: '#475569', flex: 1, paddingRight: 5 }} numberOfLines={2}>
-                    {item.nome}
-                  </Text>
-                  {/* Il numerino rosso con le attività da fare */}
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FF5252' }}>
-                    {item.conteggio}
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 10 }}>Nessuna attività aperta!</Text>
-            )}
-          </View>
-        </View>
-
-      
-
-      {/* ----------- SEZIONE 3: RECENTI ATTIVITÀ ----------- */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>RIEPILOGO ATTIVITÀ</Text>
-        
-        {/* Usiamo un loop sulle mockAttivita per creare gli item */}
         {attivitaProcessate.map((attivita) => (
           <View key={attivita.id} style={styles.attivitaItem}>
-            {/* L'indicatore visuale a punto */}
             <View style={[styles.dotAttivita, { backgroundColor: attivita.statoColore }]} />
-
             <View style={styles.attivitaTextContainer}>
               <Text style={[
                 styles.attivitaTitolo,
@@ -476,7 +416,6 @@ const pieData = [
               ]}>
                 {attivita.titolo}
               </Text>
-
               <Text style={[
                 styles.attivitaCorso,
                 attivita.statoLabel === 'scaduta' && { color: '#FF5252', fontWeight: 'bold' }
@@ -486,12 +425,10 @@ const pieData = [
                 {attivita.data_ora_scadenza}
               </Text>
             </View>
-            {/* L'icona a freccia per accedere ai dettagli */}
             <Text style={styles.arrowIcon}>›</Text>
           </View>
         ))}
 
-        {/* Messaggio se non ci sono attività */}
         {attivitaProcessate.length === 0 && (
           <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 10 }}>
             Nessuna attività in scadenza. Ottimo lavoro!
@@ -499,236 +436,42 @@ const pieData = [
         )}
       </View>
 
-      {/* Margine inferiore extra per ScrollView */}
       <View style={{ marginBottom: 50 }} />
-
     </ScrollView>
   );
 }
 
-// ----------------- STILI (Styles) -----------------
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    padding: 20,
-  },
-  
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-    marginTop: 40,
-  },
-
-  // Stili generici delle card
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-
-  // Stili per la riga centrale a due colonne
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-
-  halfCard: {
-    width: '48%',
-  },
-
-  // Stili per il toggle di selezione tra Grafico a Barre e Lineare
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  // Il binario esterno della pillola
-  switchContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#E2E8F0', // Grigio chiaro di sfondo
-    borderRadius: 20,
-    width: 140,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'relative',
-    paddingHorizontal: 14,
-  },
-  // Stile base dei testi interni
-  switchText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B', // Grigio intermedio quando non attivo
-    zIndex: 2, // Importante: mantiene il testo SOPRA il cursore mobile
-  },
-  // Colore del testo quando il cursore ci si posiziona sopra
-  switchTextActive: {
-    color: 'white', 
-  },
-  // Il cursore mobile (pallino/capsula)
-  switchBall: {
-    position: 'absolute',
-    height: 30,
-    width: 66, // Larghezza calcolata per coprire perfettamente una singola opzione
-    borderRadius: 15,
-    backgroundColor: '#475569', // Grigio scuro ardesia coerente con la palette minimale
-    zIndex: 1, // Sta sotto al testo ma sopra lo sfondo grigio chiaro
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  switchBallLeft: {
-    left: 3,
-  },
-  switchBallRight: {
-    right: 3,
-  },
-
-  // -- Stili CORRETTI per PieChart e Legenda --
-  pieContent: {
-    // Rimosso flexDirection: 'row' per farli impilare verticalmente
-    alignItems: 'center', // Centra orizzontalmente sia il grafico che la legenda
-    marginTop: 10,
-  },
-
-  pieChartContainer: {
-    width: 100, 
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-
-  legendContainer: {
-    marginTop: 20, // Aggiunge spazio tra il grafico e la legenda
-    alignItems: 'flex-start', // Allinea i testi della legenda a sinistra tra di loro
-  },
-
-  legendItem: {
-    flexDirection: 'row', 
-    alignItems: 'center',
-    marginBottom: 6, // Leggermente ridotto per non allungare troppo la card
-  },
-
-  legendText: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-
-  // Stili per i punti della legenda
-  dotSuperati: {
-    color: '#177AD5',
-    fontSize: 16,
-  },
-
-  dotDaSostenere: {
-    color: '#8EBBF3',
-    fontSize: 16,
-  },
-
-  dotDaIniziare: {
-    color: '#E2E2E2',
-    fontSize: 16,
-  },
-
-  // Stili per la card di destra
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#177AD5',
-    marginBottom: 5,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: '#EEEEEE',
-    marginVertical: 5,
-  },
-
-  // Stili per la lista Recenti Attività
-  attivitaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-
-  dotAttivita: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#8EBBF3',
-    marginRight: 15,
-  },
-
-  attivitaTextContainer: {
-    flex: 1,
-  },
-
-  attivitaTitolo: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-
-  attivitaCorso: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-
-  arrowIcon: {
-    fontSize: 22,
-    color: '#CCC',
-    fontWeight: 'bold',
-  },
-  
-  // Stili per la card del grafico a barre (separazione titolo e legenda)
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  chartLegend: {
-    flexDirection: 'row',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 15,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 5,
-  },
-  legendLabel: {
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5', padding: 20 },
+  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 20, marginTop: 40 },
+  card: { backgroundColor: 'white', borderRadius: 12, padding: 16, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 15 },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  halfCard: { width: '48%' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  switchContainer: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 20, width: 140, height: 36, alignItems: 'center', justifyContent: 'space-between', position: 'relative', paddingHorizontal: 14 },
+  switchText: { fontSize: 12, fontWeight: '700', color: '#64748B', zIndex: 2 },
+  switchTextActive: { color: 'white' },
+  switchBall: { position: 'absolute', height: 30, width: 66, borderRadius: 15, backgroundColor: '#475569', zIndex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 3 },
+  switchBallLeft: { left: 3 },
+  switchBallRight: { right: 3 },
+  pieContent: { alignItems: 'center', marginTop: 10 },
+  pieChartContainer: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  legendContainer: { marginTop: 20, alignItems: 'flex-start' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  legendText: { fontSize: 11, color: '#666', fontWeight: '500', marginLeft: 6 },
+  dotSuperati: { color: '#177AD5', fontSize: 16 },
+  dotDaSostenere: { color: '#8EBBF3', fontSize: 16 },
+  dotDaIniziare: { color: '#E2E2E2', fontSize: 16 },
+  statValue: { fontSize: 20, fontWeight: 'bold', color: '#177AD5', marginBottom: 5 },
+  divider: { height: 1, backgroundColor: '#EEEEEE', marginVertical: 5 },
+  attivitaItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EEEEEE' },
+  dotAttivita: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#8EBBF3', marginRight: 15 },
+  attivitaTextContainer: { flex: 1 },
+  attivitaTitolo: { fontSize: 14, fontWeight: '600', color: '#333' },
+  attivitaCorso: { fontSize: 12, color: '#666', marginTop: 2 },
+  arrowIcon: { fontSize: 22, color: '#CCC', fontWeight: 'bold' },
+  chartLegend: { flexDirection: 'row' },
+  legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 5 },
+  legendLabel: { fontSize: 10, color: '#666', fontWeight: '600' },
 });
