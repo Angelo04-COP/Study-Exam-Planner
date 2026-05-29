@@ -1,22 +1,17 @@
 import React from 'react';
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {View, ScrollView, Text, StyleSheet, TouchableOpacity, FlatList, Modal} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; //Libreria per lo storage persistente
 import {Calendar, DateData} from 'react-native-calendars'; //Libreria per il calendario
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AddTaskModal from '../components/AddTaskModal';
 import Colors from '../constants/Colors';
 
-//--INTEGRAZIONE MOCK DATA ---
-// si importano i dati fittizi definiti nel file mockData.js
-import { mockCorsi, mockSessioni, mockAttivita } from '../constants/mockData';
-
-const DURATA_SESSIONE_STANDARD = 120; //2 ore fisse per qualsiasi sessione
-
+import {getAttivita, getCorsi} from '../constants/storage';
 
 /*
 *  Definiamo un tipo Ibrido per gestire sia sessioni che attività nella stessa lista,
-*  con tutti i campi richiesti:
-*  Titolo, Descrizione, Corso, Data, Priorità, Sessione, Note, Stato e Tempi
+*  con tutti i campi richiesti
 */ 
 type StudyItem = {
     id: string;
@@ -65,62 +60,86 @@ const PlanningScreen = () => {
     const [taskToEdit, setTaskToEdit] = useState<StudyItem | null>(null);
     
 
+    //lo stato contenente gli item viene inizializzato come vuoto all'inizio
+   const [items, setItems] = useState<StudyItem[]>([]);
+
+   //stato per i corsi reali; tale stato memorizza l'elenco dei corsi di indirizzo recuperati permanentemente dal database locale tramite 
+   // il file storage.js
+   const [courses, setCourses] = useState<{id: string; name: string}[]>([]);
 
     /**
-     * INIZIALIZZAZIONE STATO CON MOCK DATA: 
-     * Qui si uniscono le sessioni e le attività in un unico array
-     * gestibile. Per le attività, si estrae la data dalla stringa ISO data_ora_inizio
+     * CARICAMENTO DATI All'avvio del componente
+     * In questo useEffect (hook) l'array di dipendenze è vuoto: ciò significa che la funzione viene
+     * eseguita una sola volta, esattamente nel momento in cui la schermata viene caricata in memoria per 
+     * la prima volta
+     * La funzione loadData è asincrona: leggere dati infatti dalla memoria richiede tempo; se l'applicazione
+     * si bloccasse in attesa della memoria, la UI si congelerebbe
+     * Nel blocco try, invece di accedere direttamente ad AsyncStorage, si utilizzano i metodi getCorsi() e getAttivita() 
+     * definiti nel file storage.js (percorso ../constants/storage). La parola chiave await ferma l'esecuzione di questa specifica
+     * funzione finché il modulo di storage non ha recuperato i dati, senza però bloccare il thread principale dell'applicazione.
+     * L'infrastruttura di storage si fa carico di convertire autonomamente i dati salvati in memoria in oggetti JavaScript utilizzabili. 
+     * Questo ci permette di mantenere il codice della schermata snello, pulito e focalizzato unicamente sulla logica di presentazione.
+     * Di conseguenza, questo useEffect (hook) riceve direttamente gli array di oggetti JavaScript puliti:
+     * - getCorsi() restituirà i corsi reali d'indirizzo pronti per essere salvati nello stato 'courses'.
+     * - getAttivita() restituirà l'elenco delle attività/sessioni pianificate (o un array vuoto [] al primissimo avvio assoluto) 
+     * per aggiornare lo stato 'items', lasciando l'interfaccia pulita e pronta all'uso.
+     * Se si verificasse un errore imprevisto durante la lettura, il codice salterebbe immediatamente dentro il
+     * catch . Invece di far andare l'applicazione in crash, si stampa l'errore in console e l'app si avvia comunque con un array 
+     * vuoto, garantendo la massima robustezza del software
+     * 
      */
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                //1 . Recupera i corsi reali dal database locale
+                const savedCourse = await getCorsi();
+                setCourses(savedCourse);
 
-    /*
-    * Qui si prendono due liste di dati diverse , ovvero mockSessioni e
-    * mockAttivita e le si fondono in una unica lista uniforme chiamata initialData; in particolare: 
-    *    - il simbolo dei tre punti (...), noto come Spread Operator, viene utilizzato per "spalmare"
-    *       gli elementi di un array dentro un altro array: in questo modo invece di avere un array che contiene altri
-    *        due array (cioè un array annidato), si ottiene un unico array piatto che contiene tutti gli oggetti individuali
-    *    - per ogni lista, si usa il metodo .map() per trasformare gli oggetti originali prima di inserirli nella nuova lista: 
-    * 
-    *         mockSessioni
-    *         1) si copiano tutte le proprietà originali della sessione;
-    *        2)  type: 'sessione' as const aggiunge un'etichetta fissa per distinguere questo oggetto. 'as const' serve a TypeScript
-    *            per capire che il valore è esattamente quella stringa specifica, non una stringa generica 
-    *         3) per tutte le sessioni all'inizio isCompleted: false e priority: 'Media'
-    * 
-    *        mockAttivita
-    *        1) per mockAttivita, si effettuano le stesse operazioni
-    *        2) date: a.data_ora_inizio.split('T')[0] estra solo la data da un timestamp completo,
-    *                proprio come accade poco prima con .toISOTring() 
-    */
-    const initialData: StudyItem[] = [
-        ...mockSessioni.map(s => ({
-            id: s.id,
-            title: s.titolo,
-            date: s.data,
-            estimatedTime: 0, 
-            actualTime: 0,
-            notes: s.note || '',
-            type: 'sessione' as const,
-            isCompleted: false,
-            priority: 'Media'
-        })),
-        ...mockAttivita.map(a => ({
-            id: a.id,
-            title: a.titolo,
-            date: a.data_ora_inizio.split('T')[0], //trasformazione nel formato YYYY-MM-DD
-            course_id: a.corso_id,
-            session_id: a.sessione_id,
-            priority: a.priorita,
-            isCompleted: a.completata,
-            estimatedTime: a.tempo_stimato_minuti || 0,
-            actualTime: a.tempo_impiegato_minuti || 0,
-            notes: a.note || '',
-            type: 'attivita' as const,
-        }))
-    ];
-    
-    //il valore iniziale della variabile di stato items è l'array appena creato initalData che contiene elementi
-    // di tipo StudyItem
-    const [items, setItems] = useState<StudyItem[]>(initialData)
+                //2. Recupera l'elenco delle attività/sessioni (sarà [] al primo avvio)
+                const savedTasksSessions = await getAttivita();
+                setItems(savedTasksSessions);
+            } catch (error) {
+                console.error("Errore nel recupero da AsyncStorage: ", error);
+                setItems([]); //fallback di sicurezza in caso di memoria corrotta
+            }
+        };
+
+        loadData();
+
+
+    }, []); //l'array delle dipendenze è VUOTO
+
+    /**
+     * SALVATAGGIO REATTIVO (Eseguito AUTOMATICAMENTE a ogni modifica)
+     * A differenza del primo hook, nelle dipendenze è presente la variabile di stato items: 
+     * ciò significa che ogni volta che il suo valore cambia (perché l'utente ha aggiunto una sessione, modificato un'attività o cliccato sul
+     * cestino per eliminare un elemento) , viene eseguito immediatamente il codice presente nell'hook
+     * Come la funzione loadData, anche la funzione saveData è asincrona per non bloccare l'applicazione durante la scrittura fisica in memoria
+     * Nel blocco try, la funzione AsyncStorage.setItem ha bisogno di due argomenti: la stringa identificativa globale delle attività (@planner_attivita)
+     *  e il dato da salvare. Poiché pero AsyncStorage memorizza esclusivamente testo semplice (ossia stringhe), si utlizza la funzione
+     *  JSON.stringify(items) che trasforma l'array di oggetti items in una singola stringa di testo continua in formato JSON
+     *  Una volta trasformato in testo, la parola chiave await si assicura che il dato venga scritto in modo asincrono in memoria, senza bloccare
+     * l'interfaccia grafica
+     * Se la scrittura dovesse fallire per un errore imprevisto, il sistema non andrà in crash, ma intercetterà l'anomalia
+     *  nel catch, stamperà un log di avviso e lascerà l'utente libero di continuare a usare l'applicazione
+     */
+    useEffect(() => {
+        const saveData = async () => {
+            if(!items || items.length === 0){
+                return;
+            }
+            try {
+                //si utilizza la chiave univoca per le attività definita nel sistema di storage
+                await AsyncStorage.setItem('@planner_attivita', JSON.stringify(items));
+            } catch (error) {
+                console.error("Errore nel salvataggio in AsyncStorage:", error);
+
+            }
+        };
+
+        saveData();
+
+    }, [items]);
 
     /**
      *  Funzione che restituisce il colore associato alla priorità
@@ -165,11 +184,11 @@ const PlanningScreen = () => {
             //     - priority: isNowSession ? 'Media' : taskData.priority: se l'elemento è diventato una sessione, la priorità viene forzata 
             //                a 'Media' (valore neutro); se invece è un'attività registra la priorità scelta
             //      - notes: taskData.notes e type: taskData.type aggiornano le note testuali e cambiano il macro-tipo se l'utente ha modificato la selezione;
-            //      - estimatedTime e actualTime: se l'elemento è una sessione, applica la durata standard di 120 minuti (2 ore) se è un'attività, prende le ore digitate dall'utente nel form
-            //            le trasforma in numeri interi con parseInt e le moltiplica per 60 per salvarle sotto forma di minuti. L'operatore || 0 è un paracadute: se l'utente
-            //              lascia il campo vuoto, assegna automaticamente 0 evitando che il valore diventi NaN (Not a number)
-            //      - course_id: mockCorsi.find(...)?.id: cerca all'interno dell'array globale dei corsi quello il cui nome corrisponde
-            //                 a quello selezionato nel form,  e ne estrae il codice ID corrispondente per salvarlo come chiave esterna di associazione;
+            //      - estimatedTime e actualTime: prende le ore digitate dall'utente nel form le trasforma in numeri interi con parseInt e le moltiplica per 60 per salvarle sotto forma di minuti. L'operatore || 0 è un paracadute: se l'utente
+            //              lascia il campo vuoto, assegna automaticamente 0 evitando che il valore diventi NaN (Not a number). Se la durata di una session è in termini di giorni, il tempo stimato viene azzerato. Se la durata di una sessione 
+            //               è invece in termini di ore, viene viuslizzata la durata della sessione convertita in minuti
+            //      - course_id: courses.find(...)?.id: cerca all'interno dell'array dei corsi reali caricati dallo storage locale quello il cui nome corrisponde
+            //                 a quello selezionato nel form, e ne estrae il codice ID corrispondente per salvarlo come chiave esterna di associazione;
             //   setTaskToEdit(null) : una volta che l'array aggiornato è stato passato alla state setter function setItems, l'operazione è conclusa; quindi lo stato di modifica
             //      viene resettato a null; in questo modo l'applicazione esce dalla "modalità modifica" e, la prossima volta che l'utente cliccherà sul pulsante + , il pop-up si riaprirà
             //      vuoto in modalità "nuovo inserimento"
@@ -199,7 +218,7 @@ const PlanningScreen = () => {
                         estimatedDays: taskData.estimatedDays,
                         
                         type: taskData.type,
-                        course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
+                        course_id: courses.find(c => c.name === taskData.course)?.id
                     };
                 }
                 return item;
@@ -232,15 +251,15 @@ const PlanningScreen = () => {
                 type: taskData.type,
                 sessionType: taskData.sessionType,
                 notes: taskData.notes,
-                //il metodo mockCorsi.find() analizza l'array mockCorsi elemento per elemento. Si ferma
+                //il metodo courses.find() analizza l'array courses elemento per elemento. Si ferma
                 //non appena trova un elemento che soddisfa la condizione tra parentesi
-                // Nella condizione c => c.nome === taskData.course: 
-                //   -   c rappresenta il singolo elemento nell'array mockCorsi
+                // Nella condizione c => c.name === taskData.course: 
+                //   -   c rappresenta il singolo elemento nell'array courses
                 //   -   viene confrontato il nome dell'elemento con quello ricevuto dal Modal
                 // Se il metodo find trova il corso, allora restituisce tale elemento e il codice prosegue leggendo
                 // la proprietà .id
                 //Se find non trova nulla, invece, viene restituito undefined (si noti infatti l'utilizzo di ? )
-                course_id: mockCorsi.find(c => c.nome === taskData.course)?.id
+                course_id: courses.find(c => c.name === taskData.course)?.id
 
             };
             setItems([...items, newItem]);
@@ -352,7 +371,7 @@ const PlanningScreen = () => {
                     contentContainerStyle = {{ paddingBottom: 200 }}
                     renderItem={({item}) => {
                         //si trova il nome del corso tramite l'ID
-                        const corso = mockCorsi.find(c => c.id === item.course_id);
+                        const corso = courses.find(c => c.id === item.course_id);
 
                         return(
 
@@ -400,7 +419,7 @@ const PlanningScreen = () => {
                                      </View>
 
                                     {/*Badge del corso (se presente)*/}
-                                    {corso && <Text style= {styles.courseTag}>{corso.nome}</Text>}
+                                    {corso && <Text style= {styles.courseTag}>{corso.name}</Text>}
                                     
                                     {/*Tipologia di Sessione Associata (il badge relativo alla sessione associata
                                         è visibile solo se la sessione è presente e se l'elemento che si sta inserendo si tratta di un'attività)*/}
@@ -411,8 +430,11 @@ const PlanningScreen = () => {
 
                                     )}
 
-                                    {/*Se si tratta di una sessione viene mostrata la tipologia con la durata standard fissa, altrimenti se è un'attività, 
-                                        viene mostrato il tempo stimato iniziale e, solo se l'attività è completata, viene mostrato anche il tempo effettivo */}
+                                    {/*Se si tratta di una sessione:
+                                          - se la durata della sessione è in giorni allora vengono mostrate la data di inizio e di fine sessione;
+                                          - se la durata della sessione è in ore, allora viene mostrata la durata stessa converita in minuti
+                                        altrimenti se è un'attività,  viene mostrato il tempo stimato iniziale e, 
+                                        solo se l'attività è completata, viene mostrato anche il tempo effettivo */}
                                     <Text style = {styles.taskDetails}>
                                         {item.type === 'sessione' ? (
                                             item.durationUnit === 'giorni' 
@@ -541,9 +563,8 @@ const PlanningScreen = () => {
                 //onSave per salvare le attività
                 onSave={handleSaveNewTask}
                 date={selectedDate}
-                //non si passa l'intero array mockCorsi, ma si crea una versione semplificata utilizzando
-                // il metodo .map, in modo tale da passare al componente AddTaskModal solo l'ID e il nome del corso
-                courses = {mockCorsi.map(c => ({ id: c.id, name: c.nome}))}
+                //si passa il riferimento allo stato dinamico dei corsi
+                courses = {courses}
                 taskToEdit={taskToEdit}
                 
             />

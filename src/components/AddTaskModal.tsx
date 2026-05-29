@@ -136,7 +136,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
 
 
         }
-    }, [taskToEdit, isVisible]);
+    }, [taskToEdit, isVisible, date, courses]);
 
     const handleSave = () => {
         if(!title.trim()) return;
