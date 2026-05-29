@@ -109,30 +109,34 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
     const handleSave = () => {
         if(!title.trim()) return;
         
-        //invio dell'oggetto completo al componente padre
-        onSave({
-            title,
-            desc,
-            course: selectedCourse,
-            date, 
-            //le sessioni usano un valore neutro di default per la priorità
-            priority: type === 'sessione' ? 'Media' : priority,
-            //si passa il valore calcolato di sessionType se il macro-tipo è 'sessione'
-            // OPPURE se è un'attivita che ha una sessione associata (diversa da 'Nessuna')
-            sessionType: sessionType === 'Nessuna' ? undefined : sessionType,
-            estimatedTime: estTime,
-            actualTime: actTime,
-            notes,
-            //comunica se salvare come attività o sessione
-            type,
-            isCompleted: false
+        // Cerchiamo l'oggetto corso nell'array per recuperare il suo ID originale
+        const corsoTrovato = courses.find(c => c.name === selectedCourse);
 
+        // Invio dell'oggetto mappato e formattato al componente padre (_layout.tsx)
+        onSave({
+            id: taskToEdit?.id || 'a' + Date.now(), // Mantiene l'ID se modifica, altrimenti ne crea uno nuovo
+            corso_id: corsoTrovato ? corsoTrovato.id : null,
+            sessione_id: null,
+            titolo: title,
+            descrizione: desc,
+            // Gestione date: mantiene le vecchie se in modifica, altrimenti imposta la data del calendario
+            data_ora_inizio: taskToEdit?.data_ora_inizio || `${date}T14:00:00`, 
+            data_ora_scadenza: taskToEdit?.data_ora_scadenza || `${date}T23:59:00`,
+            priorita: type === 'sessione' ? 'Media' : priority,
+            completata: taskToEdit?.completata || false,
+            // Convertiamo le ORE inserite nei TextInput in MINUTI per il database locale
+            tempo_stimato_minuti: estTime ? Math.round(parseFloat(estTime) * 60) : 0,
+            tempo_impiegato_minuti: actTime ? Math.round(parseFloat(actTime) * 60) : 0,
+            note: notes,
+            // Queste due proprietà servono al Layout padre per la logica visiva e i reindirizzamenti
+            type,
+            sessionType: sessionType === 'Nessuna' ? undefined : sessionType,
         });
         
-        //chiudiamo il modal dopo il salvataggio
+        // Chiudiamo il modal dopo l'invio dei dati
         onClose();
-    
     };
+    
 
     return(
         //il componente Modal è l'equivalente digitale di una finestra 
