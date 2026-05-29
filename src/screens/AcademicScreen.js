@@ -1,10 +1,11 @@
+// src/screens/AcademicScreen.js
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-// Importiamo le funzioni di lettura E di eliminazione
-import { eliminaCorso, eliminaEsame, getCorsi, getEsami } from '../constants/storage';
+// Importiamo le funzioni dello storage locale
+import { eliminaCorso, eliminaEsame, getCorsi, getEsami, verbalizzaEsitoEsame } from '../constants/storage';
 
 export default function AcademicScreen() {
   const [mostraEsami, setMostraEsami] = useState(false);
@@ -15,7 +16,13 @@ export default function AcademicScreen() {
   const [esami, setEsami] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- 1. CARICAMENTO DATI ---
+  // --- STATI PER IL MODALE GRAFICO DI VERBALIZZAZIONE REALE ---
+  const [isVerbalizzaModalVisible, setVerbalizzaModalVisible] = useState(false);
+  const [esameSelezionato, setEsameSelezionato] = useState(null);
+  const [corsoAssociatoAllEsame, setCorsoAssociatoAllEsame] = useState(null);
+  const [votoInserito, setVotoInserito] = useState('30');
+
+  // --- 1. CARICAMENTO DATI DINAMICI DALLO STORAGE ---
   const caricaDatiCarriera = async () => {
     setIsLoading(true);
     try {
@@ -23,9 +30,8 @@ export default function AcademicScreen() {
       
       const oggiStr = new Date().toISOString().split('T')[0];
 
-      // Mappiamo i corsi per aggiornare lo stato in tempo reale se le date sono cambiate nel tempo
+      // Calcolo dello stato temporale dinamico basato sulle date (Requisito di Traccia)
       const corsiAggiornatiDinamici = (corsiSalvati || []).map(corso => {
-        // Se il corso ha le date inserite, ricalcola lo stato attuale
         if (corso.data_inizio && corso.data_fine) {
           let nuovoStato = corso.stato;
           if (corso.data_inizio > oggiStr) {
@@ -53,16 +59,55 @@ export default function AcademicScreen() {
     if (isFocused) caricaDatiCarriera();
   }, [isFocused]);
 
-  // --- 2. LOGICA DI ELIMINAZIONE (Compatibile sia con Web che Mobile) ---
+  // --- 2. APERTURA INTERFACCIA MODALE INTEGRATA ---
+  const apriVerbalizzazione = (esame) => {
+    // Troviamo il corso reale collegato nel database per mostrarlo nel modale
+    const corsoTrovato = corsi.find(c => c.id === esame.corso_id);
+    
+    setEsameSelezionato(esame);
+    setCorsoAssociatoAllEsame(corsoTrovato);
+    setVotoInserito('30'); // Default standard accademico
+    setVerbalizzaModalVisible(true);
+  };
+
+  // --- 3. LOGICA DI VERBALIZZAZIONE CON REALE AGGIORNAMENTO DEL CORSO ---
+  const confermaEsitoDettagliato = async (esito) => {
+    if (!esameSelezionato) return;
+
+    let votoFinalizzato = null;
+
+    if (esito === 'SUPERATO') {
+      const votoNum = parseInt(votoInserito, 10);
+      // Validazione formale del voto secondo i vincoli richiesti dal progetto
+      if (isNaN(votoNum) || votoNum < 18 || votoNum > 30) {
+        Alert.alert("Errore", "Inserisci un voto valido compreso tra 18 e 30.");
+        return;
+      }
+      votoFinalizzato = votoNum;
+    }
+
+    // Passiamo l'ID del corso reale associato per far sì che lo storage aggiorni la scheda del corso
+    const success = await verbalizzaEsitoEsame(
+      esameSelezionato.id, 
+      esameSelezionato.corso_id, // L'ID reale del corso (es. 'c1')
+      esito, 
+      votoFinalizzato
+    );
+    
+    if (success) {
+      setVerbalizzaModalVisible(false);
+      setEsameSelezionato(null);
+      setCorsoAssociatoAllEsame(null);
+      caricaDatiCarriera(); // Aggiorna istantaneamente i grafici e la lista
+    }
+  };
+
+  // --- 4. LOGICA DI ELIMINAZIONE COMPATIBILE WEB/MOBILE ---
   const confermEliminazioneCorso = (id, nome) => {
-    // 1. GESTIONE SE L'APP GIRA SUL WEB (Browser)
     if (typeof window !== 'undefined' && window.confirm) {
       const confermaWeb = window.confirm(`Sei sicuro di voler eliminare il corso "${nome}"?`);
-      if (confermaWeb) {
-        eseguiEliminazioneCorso(id);
-      }
+      if (confermaWeb) eseguiEliminazioneCorso(id);
     } else {
-      // 2. GESTIONE SE L'APP GIRA SU SMARTPHONE (Android / iOS)
       Alert.alert(
         "Elimina Corso",
         `Sei sicuro di voler eliminare il corso "${nome}"?`,
@@ -74,24 +119,16 @@ export default function AcademicScreen() {
     }
   };
 
-  // Funzione isolata che cancella effettivamente il corso
   const eseguiEliminazioneCorso = async (id) => {
-    const success = await eliminaCorso(id); //
-    if (success) {
-      setCorsi(corsi.filter(c => c.id !== id)); //
-    }
+    const success = await eliminaCorso(id);
+    if (success) setCorsi(corsi.filter(c => c.id !== id));
   };
 
-
   const confermEliminazioneEsame = (id, titolo) => {
-    // 1. GESTIONE SE L'APP GIRA SUL WEB (Browser)
     if (typeof window !== 'undefined' && window.confirm) {
       const confermaWeb = window.confirm(`Sei sicuro di voler eliminare l'esame "${titolo}"?`);
-      if (confermaWeb) {
-        eseguiEliminazioneEsame(id);
-      }
+      if (confermaWeb) eseguiEliminazioneEsame(id);
     } else {
-      // 2. GESTIONE SE L'APP GIRA SU SMARTPHONE (Android / iOS)
       Alert.alert(
         "Elimina Esame",
         `Sei sicuro di voler eliminare l'esame "${titolo}"?`,
@@ -103,35 +140,26 @@ export default function AcademicScreen() {
     }
   };
 
-  // Funzione isolata che cancella effettivamente l'esame
   const eseguiEliminazioneEsame = async (id) => {
-    const success = await eliminaEsame(id); //
-    if (success) {
-      setEsami(esami.filter(e => e.id !== id)); //
-    }
+    const success = await eliminaEsame(id);
+    if (success) setEsami(esami.filter(e => e.id !== id));
   };
 
-  // --- 3. LOGICA DI MODIFICA (Navigazione ai form) ---
-  const gestisciModificaCorso = (corso) => {
-    navigation.navigate('AddCorso', { corsoDaModificare: corso });
-  };
-
-  const gestisciModificaEsame = (esame) => {
-    navigation.navigate('AddEsame', { esameDaModificare: esame });
-  };
-
-  // Helper Colori
+  // --- 5. HELPERS BADGE ---
   const getColoreStatoCorso = (stato) => {
-    switch (stato) {
-      case 'completato': return '#4CAF50'; // Verde
-      case 'in corso': return '#177AD5';    // Blu
-      case 'da iniziare': return '#F39C12'; // Arancione / Giallo scuro
+    switch (stato?.toLowerCase()) {
+      case 'completato': return '#4CAF50';
+      case 'in corso': return '#177AD5';
+      case 'da iniziare': return '#F39C12';
       default: return '#94a3b8';
     }
   };
 
   const getColoreStatoEsame = (stato) => {
-    return stato?.toLowerCase() === 'superato' ? '#4CAF50' : '#8EBBF3';
+    const s = stato?.toLowerCase();
+    if (s === 'superato') return '#4CAF50';
+    if (s === 'bocciato/rifiutato') return '#FF5252';
+    return '#8EBBF3';
   };
 
   if (isLoading) {
@@ -144,116 +172,182 @@ export default function AcademicScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* HEADER E SWITCH */}
-      <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>CARRIERA</Text>
-        <TouchableOpacity style={styles.switchContainer} onPress={() => setMostraEsami(!mostraEsami)} activeOpacity={0.9}>
-          <Text style={[styles.switchText, !mostraEsami && styles.switchTextActive]}>Corsi</Text>
-          <Text style={[styles.switchText, mostraEsami && styles.switchTextActive]}>Esami</Text>
-          <View style={[styles.switchBall, mostraEsami ? styles.switchBallRight : styles.switchBallLeft]} />
-        </TouchableOpacity>
-      </View>
-
-      {!mostraEsami ? (
-        /* ================= VISTA CORSI ================= */
-        <View style={styles.listaContainer}>
-          {corsi.length > 0 ? (
-            corsi.map((corso) => (
-              <TouchableOpacity key={corso.id} style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('CourseDetail', { courseData: corso, isExam: false })}>
-                
-                {/* Nuova struttura Header Card con pulsanti Azione */}
-                <View style={styles.cardHeader}>
-                  <View style={{ flex: 1, paddingRight: 10, alignItems: 'flex-start' }}>
-                    <Text style={styles.cardMainTitle}>{corso.nome}</Text>
-                    <View style={[styles.badge, { backgroundColor: getColoreStatoCorso(corso.stato), marginTop: 6 }]}>
-                      <Text style={styles.badgeText}>{corso.stato ? corso.stato.toUpperCase() : 'N/D'}</Text>
-                    </View>
-                  </View>
-                  
-                  {/* Pulsanti Modifica e Elimina */}
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity onPress={() => gestisciModificaCorso(corso)} style={styles.iconBtn}>
-                      <Ionicons name="pencil" size={20} color="#64748B" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => confermEliminazioneCorso(corso.id, corso.nome)} style={styles.iconBtn}>
-                      <Ionicons name="trash" size={20} color="#FF5252" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <Text style={styles.cardSubText}>Docente: {corso.docente || 'Non assegnato'}</Text>
-
-                <View style={styles.cardFooter}>
-                  <View style={styles.infoTag}>
-                    <Ionicons name="ribbon-outline" size={14} color="#64748B" />
-                    <Text style={styles.infoTagText}>{corso.cfu || 0} CFU</Text>
-                  </View>
-                  {corso.voto_ottenuto && <Text style={styles.votoTesto}>Voto: {corso.voto_ottenuto}</Text>}
-                </View>
-
-              </TouchableOpacity>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Nessun corso aggiunto alla carriera.</Text>
-          )}
+    <View style={{ flex: 1 }}>
+      <ScrollView style={styles.container}>
+        {/* HEADER ROW */}
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>CARRIERA</Text>
+          <TouchableOpacity style={styles.switchContainer} onPress={() => setMostraEsami(!mostraEsami)} activeOpacity={0.9}>
+            <Text style={[styles.switchText, !mostraEsami && styles.switchTextActive]}>Corsi</Text>
+            <Text style={[styles.switchText, mostraEsami && styles.switchTextActive]}>Esami</Text>
+            <View style={[styles.switchBall, mostraEsami ? styles.switchBallRight : styles.switchBallLeft]} />
+          </TouchableOpacity>
         </View>
-      ) : (
-        /* ================= VISTA ESAMI ================= */
-        <View style={styles.listaContainer}>
-          {esami.length > 0 ? (
-            esami.map((esame) => {
-              const corsoCollegato = corsi.find(c => c.id === esame.corso_id);
-              return (
-                <TouchableOpacity key={esame.id} style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('CourseDetail', { courseData: esame, isExam: true })}>
-                  
-                  {/* Nuova struttura Header Card con pulsanti Azione */}
+
+        {!mostraEsami ? (
+          /* ================= VISTA CORSI ================= */
+          <View style={styles.listaContainer}>
+            {corsi.length > 0 ? (
+              corsi.map((corso) => (
+                <TouchableOpacity key={corso.id} style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('CourseDetail', { courseData: corso, isExam: false })}>
                   <View style={styles.cardHeader}>
                     <View style={{ flex: 1, paddingRight: 10, alignItems: 'flex-start' }}>
-                      <Text style={styles.cardMainTitle} numberOfLines={1}>{esame.titolo}</Text>
-                      <Text style={styles.corsoIncrociatoText}>{corsoCollegato ? corsoCollegato.nome : 'Corso Non Trovato'}</Text>
-                      <View style={[styles.badge, { backgroundColor: getColoreStatoEsame(esame.stato), marginTop: 6 }]}>
-                        <Text style={styles.badgeText}>{esame.stato ? esame.stato.toUpperCase() : 'N/D'}</Text>
+                      <Text style={styles.cardMainTitle}>{corso.nome}</Text>
+                      <View style={[styles.badge, { backgroundColor: getColoreStatoCorso(corso.stato), marginTop: 6 }]}>
+                        <Text style={styles.badgeText}>{corso.stato ? corso.stato.toUpperCase() : 'N/D'}</Text>
                       </View>
                     </View>
-
-                    {/* Pulsanti Modifica e Elimina */}
                     <View style={styles.actionButtons}>
-                      <TouchableOpacity onPress={() => gestisciModificaEsame(esame)} style={styles.iconBtn}>
+                      <TouchableOpacity onPress={() => navigation.navigate('AddCorso', { corsoDaModificare: corso })} style={styles.iconBtn}>
                         <Ionicons name="pencil" size={20} color="#64748B" />
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => confermEliminazioneEsame(esame.id, esame.titolo)} style={styles.iconBtn}>
+                      <TouchableOpacity onPress={() => confermEliminazioneCorso(corso.id, corso.nome)} style={styles.iconBtn}>
                         <Ionicons name="trash" size={20} color="#FF5252" />
                       </TouchableOpacity>
                     </View>
                   </View>
 
-                  <View style={[styles.cardFooter, { marginTop: 15 }]}>
-                    <View style={styles.infoTag}>
-                      <Ionicons name="calendar-outline" size={14} color="#64748B" />
-                      <Text style={styles.infoTagText}>{esame.data}</Text>
-                    </View>
-                    <View style={styles.infoTag}>
-                      <Ionicons name="layers-outline" size={14} color="#64748B" />
-                      <Text style={styles.infoTagText}>{esame.tipologia || 'Non specificata'}</Text>
-                    </View>
-                  </View>
+                  <Text style={styles.cardSubText}>Docente: {corso.docente || 'Non assegnato'}</Text>
 
-                  {esame.voto_risultato && (
-                    <View style={styles.esitoGuscio}>
-                      <Text style={styles.esitoTesto}>Superato con: {esame.voto_risultato}</Text>
+                  <View style={styles.cardFooter}>
+                    <View style={styles.infoTag}>
+                      <Ionicons name="ribbon-outline" size={14} color="#64748B" />
+                      <Text style={styles.infoTagText}>{corso.cfu || 0} CFU</Text>
                     </View>
-                  )}
+                    {corso.voto_ottenuto && <Text style={styles.votoTesto}>Voto: {corso.voto_ottenuto}</Text>}
+                  </View>
                 </TouchableOpacity>
-              );
-            })
-          ) : (
-            <Text style={styles.emptyText}>Nessun esame programmato.</Text>
-          )}
+              ))
+            ) : (
+              <Text style={styles.emptyText}>Nessun corso aggiunto alla carriera.</Text>
+            )}
+          </View>
+        ) : (
+          /* ================= VISTA ESAMI ================= */
+          <View style={styles.listaContainer}>
+            {esami.length > 0 ? (
+              esami.map((esame) => {
+                const corsoCollegato = corsi.find(c => c.id === esame.corso_id);
+                return (
+                  <TouchableOpacity key={esame.id} style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('CourseDetail', { courseData: esame, isExam: true })}>
+                    <View style={styles.cardHeader}>
+                      <View style={{ flex: 1, paddingRight: 10, alignItems: 'flex-start' }}>
+                        <Text style={styles.cardMainTitle} numberOfLines={1}>{esame.titolo}</Text>
+                        <Text style={styles.corsoIncrociatoText}>{corsoCollegato ? corsoCollegato.nome : 'Corso Non Trovato'}</Text>
+                        <View style={[styles.badge, { backgroundColor: getColoreStatoEsame(esame.stato), marginTop: 6 }]}>
+                          <Text style={styles.badgeText}>{esame.stato ? esame.stato.toUpperCase() : 'N/D'}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.actionButtons}>
+                        {esame.stato !== 'superato' && (
+                          <TouchableOpacity onPress={() => apriVerbalizzazione(esame)} style={styles.iconBtn}>
+                            <Ionicons name="checkmark-done-circle" size={24} color="#4CAF50" />
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => navigation.navigate('AddEsame', { esameDaModificare: esame })} style={styles.iconBtn}>
+                          <Ionicons name="pencil" size={20} color="#64748B" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => confermEliminazioneEsame(esame.id, esame.titolo)} style={styles.iconBtn}>
+                          <Ionicons name="trash" size={20} color="#FF5252" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <View style={[styles.cardFooter, { marginTop: 15 }]}>
+                      <View style={styles.infoTag}>
+                        <Ionicons name="calendar-outline" size={14} color="#64748B" />
+                        <Text style={styles.infoTagText}>{esame.data}</Text>
+                      </View>
+                      <View style={styles.infoTag}>
+                        <Ionicons name="layers-outline" size={14} color="#64748B" />
+                        <Text style={styles.infoTagText}>{esame.tipologia || 'Non specificata'}</Text>
+                      </View>
+                    </View>
+
+                    {esame.voto_risultato && (
+                      <View style={styles.esitoGuscio}>
+                        <Text style={styles.esitoTesto}>Superato con: {esame.voto_risultato}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <Text style={styles.emptyText}>Nessun esame programmato.</Text>
+            )}
+          </View>
+        )}
+        <View style={{ marginBottom: 100 }} />
+      </ScrollView>
+
+      {/* ==========================================
+          MODALE GRAFICO: CON AGGANCIO REALE AL CORSO
+          ========================================== */}
+      <Modal visible={isVerbalizzaModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            
+            <Text style={styles.modalTitle}>Verbalizzazione Esame</Text>
+            
+            <View style={styles.dettagliIncrociatiContainer}>
+              <Text style={styles.modalSubtitle}>
+                Stai registrando l'esito per:{"\n"}
+                <Text style={{ fontWeight: 'bold', color: '#1E293B' }}>{esameSelezionato?.titolo}</Text>
+              </Text>
+              
+              {/* Box informativo che mostra il corso reale che verrà modificato */}
+              <View style={styles.boxCorsoIncrociato}>
+                <Ionicons name="school" size={16} color="#177AD5" />
+                <Text style={styles.testoBoxCorso}>
+                  Corso associato: <Text style={{ fontWeight: '700' }}>{corsoAssociatoAllEsame ? corsoAssociatoAllEsame.nome : 'Nessuno'}</Text>
+                </Text>
+              </View>
+            </View>
+
+            {/* SEZIONE INPUT VOTO */}
+            <View style={styles.votoInputContainer}>
+              <Text style={styles.votoLabel}>Se hai ACCETTATO il voto, inseriscilo qui sotto:</Text>
+              <TextInput 
+                style={styles.votoInput}
+                value={votoInserito}
+                onChangeText={setVotoInserito}
+                keyboardType="numeric"
+                maxLength={2}
+                placeholder="30"
+              />
+            </View>
+
+            {/* OPZIONI DI REGISTRAZIONE DINAMICA */}
+            <View style={styles.modalActionsStack}>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: '#4CAF50' }]} 
+                onPress={() => confermaEsitoDettagliato('SUPERATO')}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color="white" />
+                <Text style={styles.modalButtonText}>Superato (Aggiorna Corso)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: '#FF5252' }]} 
+                onPress={() => confermaEsitoDettagliato('RIFIUTATO')}
+              >
+                <Ionicons name="close-circle-outline" size={20} color="white" />
+                <Text style={styles.modalButtonText}>Rifiutato / Bocciato</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: '#94a3b8', marginTop: 8 }]} 
+                onPress={() => setVerbalizzaModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Annulla</Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
         </View>
-      )}
-      <View style={{ marginBottom: 100 }} />
-    </ScrollView>
+      </Modal>
+    </View>
   );
 }
 
@@ -269,12 +363,9 @@ const styles = StyleSheet.create({
   switchBallRight: { right: 3 },
   listaContainer: { gap: 16 },
   card: { backgroundColor: 'white', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 3 },
-  
-  // Stili modificati per ospitare le icone
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 10 },
-  iconBtn: { padding: 4 }, // Aumenta leggermente l'area cliccabile dell'icona
-  
+  iconBtn: { padding: 4 },
   cardMainTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
   corsoIncrociatoText: { fontSize: 13, color: '#177AD5', fontWeight: '600', marginTop: 2 },
   cardSubText: { fontSize: 14, color: '#64748B', marginBottom: 12 },
@@ -286,5 +377,20 @@ const styles = StyleSheet.create({
   votoTesto: { fontSize: 14, fontWeight: 'bold', color: '#4CAF50' },
   esitoGuscio: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   esitoTesto: { fontSize: 13, fontWeight: '600', color: '#4CAF50' },
-  emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 30, fontSize: 15, fontStyle: 'italic' }
+  emptyText: { textAlign: 'center', color: '#94a3b8', marginTop: 30, fontSize: 15, fontStyle: 'italic' },
+  
+  // --- NUOVI STILI DEL SELETTORE GRAFICO ---
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: 'white', width: '85%', borderRadius: 20, padding: 24, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B', marginBottom: 8 },
+  dettagliIncrociatiContainer: { width: '100%', alignItems: 'center', marginBottom: 15 },
+  modalSubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 10, lineHeight: 20 },
+  boxCorsoIncrociato: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 8, borderWidth: 1, borderColor: '#BFDBFE' },
+  testoBoxCorso: { fontSize: 12, color: '#1E40AF' },
+  votoInputContainer: { width: '100%', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 14, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: '#E2E8F0' },
+  votoLabel: { fontSize: 13, color: '#475569', fontWeight: '500', marginBottom: 8 },
+  votoInput: { backgroundColor: 'white', width: 65, height: 44, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', textAlign: 'center', fontSize: 18, fontWeight: 'bold', color: '#177AD5' },
+  modalActionsStack: { width: '100%', gap: 10 },
+  modalButton: { flexDirection: 'row', height: 46, borderRadius: 10, justifyContent: 'center', alignItems: 'center', gap: 8 },
+  modalButtonText: { color: 'white', fontSize: 14, fontWeight: 'bold' }
 });

@@ -152,3 +152,45 @@ export const aggiornaEsame = async (esameAggiornato) => {
     return false;
   }
 };
+
+// src/constants/storage.js
+
+export const verbalizzaEsitoEsame = async (idEsame, corsoId, esito, voto = null) => {
+  try {
+    // 1. Aggiorniamo lo stato dell'Esame
+    const esamiAttuali = await getEsami();
+    const esamiAggiornati = esamiAttuali.map(esame => {
+      if (esame.id === idEsame) {
+        return {
+          ...esame,
+          stato: esito === 'SUPERATO' ? 'superato' : 'rifiutato',
+          voto_risultato: esito === 'SUPERATO' ? parseInt(voto, 10) : null
+        };
+      }
+      return esame;
+    });
+    await AsyncStorage.setItem(CHIAVE_ESAMI, JSON.stringify(esamiAggiornati));
+
+    // 2. Se l'esame è superato, aggiorniamo automaticamente il Corso associato
+    if (esito === 'SUPERATO' && corsoId) {
+      const corsiAttuali = await getCorsi();
+      const corsiAggiornati = corsiAttuali.map(corso => {
+        if (corso.id === corsoId) {
+          return {
+            ...corso,
+            stato: 'completato',
+            voto_ottenuto: parseInt(voto, 10)
+          };
+        }
+        return corso;
+      });
+      await AsyncStorage.setItem(CHIAVE_CORSI, JSON.stringify(corsiAggiornati));
+    }
+
+    console.log("Verbalizzazione completata con successo!");
+    return true;
+  } catch (error) {
+    console.error("Errore durante la verbalizzazione:", error);
+    return false;
+  }
+};
