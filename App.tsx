@@ -1,7 +1,7 @@
 // App.tsx (nella cartella principale del progetto)
 import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
-import AngeloNavigator from './src/navigation/AngeloNavigator';
+import AngeloNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   return (

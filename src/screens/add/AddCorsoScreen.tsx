@@ -50,7 +50,7 @@ export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
       
       // PASSO 2: Sostituiamo router.replace con la navigazione nativa (Slide pag. 14)
       // Specifichiamo il nome esatto della rotta della tab (es: 'Academic')
-      navigation.navigate('Academic'); 
+      navigation.navigate('MainTabs', { screen: 'Academic' });
       
     } catch (error) {
       Alert.alert("Errore", "Impossibile salvare il corso sul dispositivo.");
