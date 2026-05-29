@@ -147,7 +147,7 @@ function TabNavigator() {
 
             <TouchableOpacity style={styles.menuItem} onPress={() => navigateAndClose('AddScelta')}>
               <Ionicons name="list-outline" size={24} color="#177AD5" />
-              <Text style={styles.menuText}>Pianifica Attività</Text>
+              <Text style={styles.menuText}>Pianifica Attività/Sessione</Text>
             </TouchableOpacity>
 
           </View>
