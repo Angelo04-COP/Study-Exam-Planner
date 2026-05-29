@@ -14,12 +14,22 @@ export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
   const [descrizione, setDescrizione] = useState('');
   const [votoDesiderato, setVotoDesiderato] = useState('');
   
+  // Nuovi stati per la gestione manuale delle date di inizio e fine
+  const [dataInizio, setDataInizio] = useState('');
+  const [dataFine, setDataFine] = useState('');
+  
   const semestre = "Secondo Semestre"; 
   const annoAccademico = "2025/2026";
 
   const handleSalvaCorso = async () => {
     if (!nome.trim()) {
       Alert.alert("Errore", "Il nome del corso è obbligatorio!");
+      return;
+    }
+
+    // Validazione base per assicurarsi che i campi data non siano vuoti
+    if (!dataInizio.trim() || !dataFine.trim()) {
+      Alert.alert("Errore", "Le date di inizio e fine sono obbligatorie!");
       return;
     }
 
@@ -34,8 +44,8 @@ export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
       stato: 'in corso', 
       voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : 18,
       voto_ottenuto: null, 
-      data_inizio: '2026-03-01',
-      data_fine: '2026-06-15',
+      data_inizio: dataInizio.trim(), // Salvataggio del valore dinamico inserito dall'utente
+      data_fine: dataFine.trim(),     // Salvataggio del valore dinamico inserito dall'utente
       colore: '#177AD5', 
       anno: 1
     };
@@ -71,6 +81,24 @@ export default function NuovoCorsoScreen({ navigation }: { navigation: any }) {
 
       <Text style={styles.label}>Voto Desiderato (Esame)</Text>
       <TextInput style={styles.input} placeholder="Es: 28" keyboardType="numeric" value={votoDesiderato} onChangeText={setVotoDesiderato} />
+
+      {/* --- NUOVI CAMPI INPUT PER LE DATE --- */}
+      <Text style={styles.label}>Data Inizio (AAAA-MM-GG) *</Text>
+      <TextInput 
+        style={styles.input} 
+        placeholder="Es: 2026-03-01" 
+        value={dataInizio} 
+        onChangeText={setDataInizio} 
+      />
+
+      <Text style={styles.label}>Data Fine (AAAA-MM-GG) *</Text>
+      <TextInput 
+        style={styles.input} 
+        placeholder="Es: 2026-06-15" 
+        value={dataFine} 
+        onChangeText={setDataFine} 
+      />
+      {/* ------------------------------------- */}
 
       <Text style={styles.label}>Descrizione del corso</Text>
       <TextInput style={[styles.input, styles.textArea]} placeholder="Cosa si studia..." multiline value={descrizione} onChangeText={setDescrizione} />
