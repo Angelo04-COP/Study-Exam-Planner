@@ -127,7 +127,6 @@ export const salvaNuovoEsame = async (nuovoEsame) => {
   }
 };
 
-// Cerca questa funzione dentro src/constants/storage.js e sostituiscila:
 
 export const eliminaEsame = async (idEsame) => {
   try {
@@ -181,7 +180,7 @@ export const aggiornaEsame = async (esameAggiornato) => {
   }
 };
 
-// src/constants/storage.js
+
 
 export const verbalizzaEsitoEsame = async (idEsame, corsoId, esito, voto = null) => {
   try {
