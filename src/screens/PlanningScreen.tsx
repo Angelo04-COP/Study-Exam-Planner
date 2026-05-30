@@ -119,7 +119,11 @@ const PlanningScreen = () => {
 
                 //2. Recupera l'elenco delle attività/sessioni (sarà [] al primo avvio)
                 const savedTasksSessions = await getAttivita();
-                setItems(savedTasksSessions);
+
+                // TRUCCO DI PULIZIA: Manteniamo solo i task che hanno un ID valido
+                const taskPuliti = savedTasksSessions.filter((task: any) => task.id !== undefined && task.id !== null);
+                
+                setItems(taskPuliti);
             } catch (error) {
                 console.error("Errore nel recupero da AsyncStorage: ", error);
                 setItems([]); //fallback di sicurezza in caso di memoria corrotta
@@ -488,12 +492,13 @@ const PlanningScreen = () => {
                     //   evitando conflitti di input e preservando l'esatto layout grafico
                     data={items
                     // --- STEP 1: FILTRO TEMPORALE MIGLIORATO ---
-                    .filter(item => {
-                        // Se non c'è una data, ignoralo
-                        if (!item.date) return false;
-                        // Taglia un eventuale orario "2026-05-28T23..." in "2026-05-28" e confronta
-                        return item.date.split('T')[0] === selectedDate;
+                        .filter(item => {
+                            // Se non c'è una data, ignoralo
+                            if (!item.date) return false;
+                            // Taglia un eventuale orario "2026-05-28T23..." in "2026-05-28" e confronta
+                            return item.date.split('T')[0] === selectedDate;
                         })
+                    
                         // --- STEP 2: NUOVO FILTRO PER CORSO ASSOCIATO ---
                         // Avendo standardizzato il filtro sull'ID, si confronta
                         //  direttamente la chiave esterna 'item.course_id' con lo stato 'corsoFiltro'.
