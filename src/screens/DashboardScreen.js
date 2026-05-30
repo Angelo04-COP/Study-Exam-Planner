@@ -3,9 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 
-// Importiamo le funzioni reali dello storage locale
+// Funzioni Storage
 import { getAttivita, getCorsi, getEsami } from '../constants/storage';
-// ----------------- DATI FITTIZI (Mock Data) -----------------
+//Dati fittizi per timer
 import { mockTempiStudio } from '../constants/mockData';
 
 export default function DashboardScreen() {
@@ -38,9 +38,9 @@ export default function DashboardScreen() {
     caricaDatiDispositivo();
   }, [isFocused]);
 
-  // ==========================================================
+  //PARTE DELLA LOGICA DI CALCOLO (per dashboard)
+
   // [1] MEDIA PONDERATA 
-  // ==========================================================
   const corsiCompletati = corsi.filter(
     corso => corso.stato === 'completato' && corso.voto_ottenuto !== null && corso.voto_ottenuto !== undefined
   );
@@ -54,10 +54,8 @@ export default function DashboardScreen() {
   );
   const mediaAttuale = cfuGuadagnati > 0 ? (sommaPonderata / cfuGuadagnati).toFixed(2) : "0.00";
 
-  // ==========================================================
+
   // [2] PROSSIME SCADENZE E RIEPILOGO ATTIVITÀ (Adattato per PlanningScreen)
-  // ==========================================================
-  // ADATTATORE: Supporta sia 'completata' che 'isCompleted'
   const prossimeScadenze = attivita.filter(a => {
     const isCompletata = a.completata !== undefined ? a.completata : a.isCompleted;
     return !isCompletata;
@@ -66,7 +64,6 @@ export default function DashboardScreen() {
   const oggi = new Date().toISOString().split('T')[0]; 
   const attivitaProcessate = attivita
     .map(att => {
-      // ADATTATORE CHIAVI: Supporta sia l'italiano che l'inglese del PlanningScreen
       const corsoIdReale = att.corso_id || att.course_id;
       const corso = corsi.find(c => c.id === corsoIdReale);
       const isCompletata = att.completata !== undefined ? att.completata : att.isCompleted;
@@ -105,9 +102,8 @@ export default function DashboardScreen() {
     })
     .slice(0, 8); 
 
-  // ==========================================================
-  // [3] PROGRESSO ESAMI 
-  // ==========================================================
+
+  // [3] PROGRESSO ESAMI (GRAFICO A TORTA)
   const esamiSuperati = esami.filter(e => e.stato === 'superato').length;
   const esamiProgrammati = esami.filter(e => e.stato === 'programmato').length;
   const esamiDaInziare = Math.max(0, corsi.length - (esamiSuperati + esamiProgrammati)); 
@@ -120,15 +116,13 @@ export default function DashboardScreen() {
   const pieDataSicuri = (esamiSuperati === 0 && esamiProgrammati === 0 && esamiDaInziare === 0) 
     ? [{ value: 1, color: '#E2E2E2' }] : pieData;
 
-  // ==========================================================
+
   // [4] GRAFICO A BARRE (Ore Pianificate vs Effettive)
-  // ==========================================================
   const orePianificate = [0, 0, 0, 0, 0, 0, 0];
   const oreEffettive = [0, 0, 0, 0, 0, 0, 0];
   const etichetteGiorni = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
   attivita.forEach(att => {
-    // ADATTATORE GRAFICO: Legge 'date' ed 'estimatedTime' di PlanningScreen.tsx
     const dataInizioCorretta = att.data_ora_inizio || att.date || att.startDate;
     const tempoStimatoCorretto = att.tempo_stimato_minuti !== undefined ? att.tempo_stimato_minuti : att.estimatedTime;
 
@@ -163,9 +157,8 @@ export default function DashboardScreen() {
   const maxAssoluto = Math.max(...orePianificate, ...oreEffettive);
   const maxOreGrafico = maxAssoluto > 0 ? Math.ceil(maxAssoluto) + 1 : 8;
 
-  // ==========================================================
+
   // [5] GRAFICO A LINEE (Andamento Voti)
-  // ==========================================================
   const esamiSuperatiOrdinati = [...esami]
     .filter(esame => esame.stato === 'superato' && esame.voto_risultato)
     .sort((a, b) => new Date(a.data) - new Date(b.data)); 
@@ -195,9 +188,8 @@ export default function DashboardScreen() {
   const dataMediaPonderata = dataMediaPonderataRaw.length > 0 ? dataMediaPonderataRaw : [{ value: 0, label: '-' }];
   const dataMediaAritmetica = dataMediaAritmeticaRaw.length > 0 ? dataMediaAritmeticaRaw : [{ value: 0, label: '-' }];
 
-  // ==========================================================
-  // [D] INSIGHTS CORSI
-  // ==========================================================
+
+  // [6] TIMELINE CORSI
   const oggiCorrente = new Date(); 
 
   const progressGiorniCorsi = corsi
@@ -223,6 +215,9 @@ export default function DashboardScreen() {
     })
     .sort((a, b) => b.percentuale - a.percentuale); 
 
+
+  //GRAFICO NON IN USO (RIDONDANTE)
+  /*
   const attivitaApertePerCorso = {};
   attivita.forEach(att => {
     const isCompletata = att.completata !== undefined ? att.completata : att.isCompleted;
@@ -232,9 +227,9 @@ export default function DashboardScreen() {
           attivitaApertePerCorso[corsoId] = (attivitaApertePerCorso[corsoId] || 0) + 1;
       }
     }
-  });
+  });*/
 
-  // --- CARICAMENTO SCHERMATA ---
+  //CARICAMENTO SCHERMATA
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -246,12 +241,12 @@ export default function DashboardScreen() {
     );
   }
 
-  // --- RENDERING GRAFICO ---
+  //RENDERING GRAFICO
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.headerTitle}>CRUSCOTTO</Text>
 
-      {/* ----------- SEZIONE 1: ORE STUDIO E GRAFICI ----------- */}
+      {/* SEZIONE 1: ORE STUDIO E GRAFICI */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>{mostraVoti ? 'ANDAMENTO VOTI' : 'STUDIO ORE SETTIMANALI'}</Text>
@@ -324,7 +319,7 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      {/* ----------- SEZIONE 2: METRICHE ----------- */}
+      {/* SEZIONE 2: METRICHE */}
       <View style={styles.row}>
         <View style={[styles.card, styles.halfCard]}>
           <Text style={styles.cardTitle}>PROGRESSO ESAMI</Text>
@@ -367,7 +362,7 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* ----------- SEZIONE 3: TIMELINE CORSI ----------- */}
+      {/* SEZIONE 3: TIMELINE CORSI */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>TIMELINE CORSI ATTIVI</Text>
         <View style={{ marginTop: 10 }}>
@@ -402,7 +397,7 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* ----------- SEZIONE 4: CRONOLOGIA E PROSSIME ATTIVITÀ ----------- */}
+      {/* SEZIONE 4: CRONOLOGIA E PROSSIME ATTIVITÀ */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>RIEPILOGO ATTIVITÀ</Text>
         {attivitaProcessate.map((attivita) => (
@@ -440,6 +435,7 @@ export default function DashboardScreen() {
   );
 }
 
+//STILI:
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5', padding: 20 },
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 20, marginTop: 40 },
@@ -456,9 +452,9 @@ const styles = StyleSheet.create({
   switchBallRight: { right: 3 },
   pieContent: { alignItems: 'center', marginTop: 10 },
   pieChartContainer: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-  legendContainer: { marginTop: 20, alignItems: 'flex-start' },
-  legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  legendText: { fontSize: 11, color: '#666', fontWeight: '500', marginLeft: 6 },
+  legendContainer: { marginTop: 20, marginHorizontal: 10, alignItems: 'flex-start' },
+  legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginLeft: 5 },
+  legendText: { fontSize: 11, color: '#666', fontWeight: '500', marginLeft: 8 },
   dotSuperati: { color: '#177AD5', fontSize: 16 },
   dotDaSostenere: { color: '#8EBBF3', fontSize: 16 },
   dotDaIniziare: { color: '#E2E2E2', fontSize: 16 },
