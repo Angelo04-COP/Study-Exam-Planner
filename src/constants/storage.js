@@ -1,6 +1,6 @@
 // src/constants/storage.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mockAttivita, mockCorsi, mockEsami } from './mockData';
+import { mockAttivita, mockCorsi, mockEsami, mockSessioni, mockStoricoTimer } from './mockData';
 
 // Chiavi segrete univoche per salvare i dati nel disco del telefono
 const CHIAVE_CORSI = '@planner_corsi';
@@ -15,11 +15,39 @@ const CHIAVE_STORICO_TIMER = '@planner_storico_timer';
  */
 export const inizializzaStorage = async () => {
   try {
+    await AsyncStorage.clear();
     const corsiEsistenti = await AsyncStorage.getItem(CHIAVE_CORSI);
     if (!corsiEsistenti) {
       await AsyncStorage.setItem(CHIAVE_CORSI, JSON.stringify(mockCorsi || []));
       await AsyncStorage.setItem(CHIAVE_ESAMI, JSON.stringify(mockEsami || []));
-      await AsyncStorage.setItem(CHIAVE_ATTIVITA, JSON.stringify(mockAttivita || []));
+      const sessioniMappate = (mockSessioni || []).map(s => ({
+        id: s.id,
+        title: s.titolo, 
+        date: s.data_ora_inizio ? s.data_ora_inizio.split('T')[0] : (s.data || ''),
+        startDate: s.data_ora_inizio,
+        endDate: s.data_ora_fine,
+        notes: s.note || '',
+        type: 'sessione'
+      }));
+
+      const attivitaMappate = (mockAttivita || []).map(a => ({
+        id: a.id,
+        course_id: a.corso_id,     
+        session_id: a.sessione_id, 
+        title: a.titolo,           
+        desc: a.descrizione,
+        date: a.data_ora_inizio ? a.data_ora_inizio.split('T')[0] : (a.data_ora_scadenza ? a.data_ora_scadenza.split('T')[0] : ''),
+        priority: a.priorita,
+        isCompleted: a.completata,
+        estimatedTime: a.tempo_stimato_minuti || 0,
+        actualTime: a.tempo_impiegato_minuti || 0,
+        notes: a.note || '',
+        type: 'attivita'
+      }));
+
+      const planningUnito = [...sessioniMappate, ...attivitaMappate];
+      await AsyncStorage.setItem(CHIAVE_ATTIVITA, JSON.stringify(planningUnito || []));
+      await AsyncStorage.setItem(CHIAVE_STORICO_TIMER, JSON.stringify(mockStoricoTimer || []));
       console.log("Database locale inizializzato con tutti i dati Mock!");
     }
   } catch (error) {

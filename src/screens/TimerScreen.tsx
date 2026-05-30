@@ -111,8 +111,20 @@ export default function TimerScreen() {
       setAvailableActivities(filtered);
       setSelectedActivity(null);
 
-      // Calcolo durata (Fallback a 60 minuti se non definita)
-      const duration = selectedSession.estimatedTime ? selectedSession.estimatedTime * 60 : 3600;
+      let duration = 3600; // Default di sicurezza (60 minuti)
+
+      if (selectedSession.estimatedTime && selectedSession.estimatedTime > 0) {
+        // Se per caso c'è un tempo pre-salvato in minuti, usa quello
+        duration = selectedSession.estimatedTime * 60;
+      } else if (selectedSession.startDate && selectedSession.endDate) {
+        // Altrimenti, calcola i secondi esatti di differenza tra inizio e fine
+        const start = new Date(selectedSession.startDate).getTime();
+        const end = new Date(selectedSession.endDate).getTime();
+        
+        if (!isNaN(start) && !isNaN(end) && end > start) {
+          duration = Math.floor((end - start) / 1000); 
+        }
+      }
       
       setTotalInitialSeconds(duration);
       setSecondsLeft(duration);
