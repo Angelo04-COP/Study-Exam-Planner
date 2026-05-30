@@ -427,7 +427,7 @@ export default function AcademicScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' }, // Padding rimosso dal contenitore per permettere allo sticky header di toccare i bordi laterali
+  container: { flex: 1, backgroundColor: '#F5F5F5', paddingTop: 40}, // Padding rimosso dal contenitore per permettere allo sticky header di toccare i bordi laterali
   
   // Header Principale
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 40, paddingHorizontal: 20 },

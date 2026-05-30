@@ -1,6 +1,6 @@
 // src/screens/add/AddCorsoScreen.tsx
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 import { aggiornaCorso, salvaNuovoCorso } from '../../constants/storage';
 
 export default function NuovoCorsoScreen({ route, navigation }: { route: any, navigation: any }) {
@@ -133,6 +133,13 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
   };
 
   return (
+    <KeyboardAvoidingView
+    style={{ flex: 1 }} 
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  >
+    {/* Questo permette di chiudere la tastiera cliccando fuori dai campi */}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>Nome del Corso *</Text>
       <TextInput style={styles.input} placeholder="Es: Computer Vision" value={nome} onChangeText={setNome} />
@@ -165,6 +172,10 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
         <Text style={styles.btnText}>{corsoDaModificare ? "Salva Modifiche" : "Salva Corso"}</Text>
       </TouchableOpacity>
     </ScrollView>
+    
+    </TouchableWithoutFeedback>
+  </KeyboardAvoidingView>
+
   );
 }
 

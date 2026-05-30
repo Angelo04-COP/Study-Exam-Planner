@@ -1,7 +1,7 @@
 // src/screens/add/AddEsameScreen.tsx
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { aggiornaEsame, getCorsi, salvaNuovoEsame } from '../../constants/storage';
 
 export default function NuovoEsameScreen({ route, navigation }: { route: any, navigation: any }) {
@@ -136,6 +136,12 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
   }
 
   return (
+    <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  >
+    {/* Questo permette di chiudere la tastiera cliccando fuori dai campi */}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>Titolo Esame / Scadenza *</Text>
       <TextInput style={styles.input} placeholder="Es: Presentazione Script Python" value={titolo} onChangeText={setTitolo} />
@@ -185,6 +191,9 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
         <Text style={styles.btnText}>{esameDaModificare ? "Salva Modifiche" : "Salva Esame"}</Text>
       </TouchableOpacity>
     </ScrollView>
+    
+    </TouchableWithoutFeedback>
+  </KeyboardAvoidingView> 
   );
 }
 

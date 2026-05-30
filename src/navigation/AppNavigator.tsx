@@ -8,7 +8,7 @@ import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CourseDetailScreen from '../screens/CourseDetailScreen';
 
 import AcademicScreen from '../screens/AcademicScreen';
-import DashboardScreen from '../screens/DashboardScreen'; 
+import DashboardScreen from '../screens/DashboardScreen';
 import PlanningScreen from '../screens/PlanningScreen';
 import TimerScreen from '../screens/TimerScreen';
 
@@ -171,6 +171,7 @@ export default function AppNavigator() {
         component={CourseDetailScreen}
         options={({ route }: any) => ({
           title: route.params?.isExam ? 'Dettaglio Esame' : 'Dettaglio Corso',
+          headerBackTitle: 'Indietro',
         })}
 
       />
