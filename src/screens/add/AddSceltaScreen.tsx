@@ -20,7 +20,6 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
   useEffect(() => {
     const caricaCorsiSalvati = async () => {
       if (isFocused) {
-        setLoading(true);
         try {
           const corsiDispositivo = await getCorsi();
           // Mappiamo i dati nel formato richiesto dal tipo Course del Modal del tuo amico (id, name)[cite: 2]
@@ -77,8 +76,6 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
     };
 
     try {
-      console.log("Salvataggio pianificazione in corso...", nuovaAttivitaCoerente);
-      
       // Persistenza locale reale su file system mediante AsyncStorage
       await salvaNuovaAttivita(nuovaAttivitaCoerente);
       
@@ -86,7 +83,7 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
       Alert.alert("Successo", "Pianificazione salvata con successo!");
       
       // PATTERN DELLE SLIDE: Torniamo alla tab principale del Planner
-      navigation.navigate('MainTabs', { screen: 'Planner' });
+      navigation.goBack();
     } catch (e) {
       Alert.alert("Errore", "Impossibile salvare l'attività nel dispositivo.");
     }
@@ -95,7 +92,7 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
   // Funzione invocata se l'utente clicca fuori o annulla dal pop-up[cite: 2]
   const handleClose = () => {
     setModalVisibile(false);
-    navigation.navigate('MainTabs', { screen: 'Planner' }); // Rispedisce l'utente alla home del Planner[cite: 2]
+    navigation.goBack();
   };
 
   // Durante il caricamento asincrono mostriamo un indicatore nativo di attesa[cite: 2]
