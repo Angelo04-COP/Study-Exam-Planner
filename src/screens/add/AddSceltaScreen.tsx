@@ -41,35 +41,51 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
     caricaCorsiSalvati();
   }, [isFocused]);
 
-  // Gestione del salvataggio finale dei dati provenienti dal form controllato del tuo collega[cite: 2]
+  // Gestione del salvataggio finale dei dati provenienti dal form controllato del tuo collega
   const handleSaveTask = async (taskData: any) => {
-    // Ricostruiamo l'oggetto mappando i dati ricevuti da AddTaskModal[cite: 2]
+    
+    // 1. Troviamo l'ID del corso partendo dal nome (esattamente come fa PlanningScreen)
+    const corsoSelezionato = corsi.find(c => c.nome === taskData.course);
+
+    // 2. Dobbiamo convertire i tempi in minuti, come nel PlanningScreen
+    const isSession = taskData.type === 'sessione';
+    const isDays = taskData.durationUnit === 'giorni';
+
+    // 3. Ricostruiamo l'oggetto usando le CHIAVI IN INGLESE che si aspetta l'app
     const nuovaAttivitaCoerente = {
-      id: taskData.id,
-      corso_id: taskData.corso_id,
-      sessione_id: null, 
-      titolo: taskData.titolo,
-      descrizione: taskData.descrizione,
-      data_ora_inizio: taskData.data_ora_inizio, 
-      data_ora_scadenza: taskData.data_ora_scadenza,
-      priorita: taskData.priorita, 
-      completata: taskData.completata,
-      // I dati arrivano già mappati in minuti dal form del tuo amico![cite: 2]
-      tempo_stimato_minuti: taskData.tempo_stimato_minuti, 
-      tempo_impiegato_minuti: taskData.tempo_impiegato_minuti,
-      note: taskData.note,
+      id: Date.now().toString(), // Generiamo l'ID univoco che mancava
+      title: taskData.title,     // Usiamo "title" e non "titolo"
+      desc: taskData.desc,       
+      date: taskData.date,       // Usiamo "date" e non "data_ora_scadenza"
+      course_id: corsoSelezionato ? corsoSelezionato.id : undefined,
+      sessionType: taskData.sessionType,
+      durationUnit: taskData.durationUnit,
+      startDate: taskData.startDate,
+      endDate: taskData.endDate,
+      estimatedDays: taskData.estimatedDays,
+      priority: taskData.priority,
+      isCompleted: taskData.isCompleted,
+      type: taskData.type,
+      notes: taskData.notes,
+      // Calcolo matematico identico a PlanningScreen per convertire le ore in minuti
+      estimatedTime: isSession
+          ? (isDays ? 0 : (Math.round(parseFloat(taskData.estimatedTime) * 60) || 0))
+          : (Math.round(parseFloat(taskData.estimatedTime) * 60) || 0),
+      actualTime: !isSession && taskData.actualTime
+          ?  (Math.round(parseFloat(taskData.actualTime) * 60) || 0)
+          : 0,
     };
 
     try {
       console.log("Salvataggio pianificazione in corso...", nuovaAttivitaCoerente);
       
-      // Persistenza locale reale su file system mediante AsyncStorage[cite: 2]
+      // Persistenza locale reale su file system mediante AsyncStorage
       await salvaNuovaAttivita(nuovaAttivitaCoerente);
       
       setModalVisibile(false);
       Alert.alert("Successo", "Pianificazione salvata con successo!");
       
-      // PATTERN DELLE SLIDE: Torniamo alla tab principale del Planner (Slide pag. 14, 25)[cite: 2]
+      // PATTERN DELLE SLIDE: Torniamo alla tab principale del Planner
       navigation.navigate('MainTabs', { screen: 'Planner' });
     } catch (e) {
       Alert.alert("Errore", "Impossibile salvare l'attività nel dispositivo.");

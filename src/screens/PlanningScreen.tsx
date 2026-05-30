@@ -1,14 +1,12 @@
-import React from 'react';
-import {useState, useEffect} from 'react';
-import {View, ScrollView, Text, StyleSheet, TouchableOpacity, FlatList, Modal} from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; //Libreria per lo storage persistente
-import {Calendar, DateData} from 'react-native-calendars'; //Libreria per il calendario
+import React, { useEffect, useState } from 'react';
+import { FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Calendar, DateData } from 'react-native-calendars'; //Libreria per il calendario
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AddTaskModal from '../components/AddTaskModal';
 import Colors from '../constants/Colors';
 
-import {getAttivita, getCorsi} from '../constants/storage';
+import { getAttivita, getCorsi, salvaTutteLeAttivita } from '../constants/storage';
 
 /*
 *  Definiamo un tipo Ibrido per gestire sia sessioni che attività nella stessa lista,
@@ -140,6 +138,9 @@ const PlanningScreen = () => {
     }, [isFocused]);
 
     /**
+     * MODIFICATA CON LA NUOVA FUNZIONE salvaTutteLeAttivita() CENTRALIZZATA IN storage.js!!!!
+     * 
+     * 
      * SALVATAGGIO REATTIVO (Eseguito AUTOMATICAMENTE a ogni modifica)
      * A differenza del primo hook, nelle dipendenze sono presenti sia la variabile di stato items sia la variabile 'isLoaded': 
      * ciò significa che ogni volta che il suo valore cambia (perché l'utente ha aggiunto una sessione, modificato un'attività o cliccato sul
@@ -162,11 +163,10 @@ const PlanningScreen = () => {
                 return;
             }
             try {
-                //si utilizza la chiave univoca per le attività definita nel sistema di storage
-                await AsyncStorage.setItem('@planner_attivita', JSON.stringify(items));
+                // Utilizziamo la funzione centralizzata di storage.js
+                await salvaTutteLeAttivita(items);
             } catch (error) {
-                console.error("Errore nel salvataggio in AsyncStorage:", error);
-
+                console.error("Errore nel salvataggio centralizzato:", error);
             }
         };
 
@@ -487,9 +487,13 @@ const PlanningScreen = () => {
                     // - nestedScrollEnabled={true}: permette al sistema operativo di calcolare correttamente i tocchi tra componenti nidificati,
                     //   evitando conflitti di input e preservando l'esatto layout grafico
                     data={items
-                        // --- STEP 1: FILTRO TEMPORALE ORIGINALE ---
-                        // Verifica rigida sulla data del calendario: isola solo i task del giorno selezionato.
-                        .filter(item => item.date === selectedDate)
+                    // --- STEP 1: FILTRO TEMPORALE MIGLIORATO ---
+                    .filter(item => {
+                        // Se non c'è una data, ignoralo
+                        if (!item.date) return false;
+                        // Taglia un eventuale orario "2026-05-28T23..." in "2026-05-28" e confronta
+                        return item.date.split('T')[0] === selectedDate;
+                        })
                         // --- STEP 2: NUOVO FILTRO PER CORSO ASSOCIATO ---
                         // Avendo standardizzato il filtro sull'ID, si confronta
                         //  direttamente la chiave esterna 'item.course_id' con lo stato 'corsoFiltro'.

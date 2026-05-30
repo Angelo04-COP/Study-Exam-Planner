@@ -51,6 +51,17 @@ export const salvaNuovaAttivita = async (nuovaAttivita) => {
   }
 };
 
+export const salvaTutteLeAttivita = async (listaAggiornata) => {
+  try {
+    await AsyncStorage.setItem(CHIAVE_ATTIVITA, JSON.stringify(listaAggiornata));
+    console.log("Intera lista attività sincronizzata sul telefono!");
+    return true;
+  } catch (error) {
+    console.error("Errore nel salvataggio della lista attività:", error);
+    return false;
+  }
+};
+
 // ==========================================
 // OPERAZIONI PER I CORSI
 // ==========================================
