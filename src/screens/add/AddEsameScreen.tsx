@@ -26,11 +26,11 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
           const corsiSalvati = await getCorsi();
           setCorsiDisponibili(corsiSalvati || []);
           
-          // Se siamo in modalità modifica, pre-seleziona il corso associato originale
+          // In modalità modifica pre-seleziona il corso associato originale
           if (esameDaModificare) {
             setCorsoSelezionatoId(esameDaModificare.corso_id || '');
           } else if (corsiSalvati && corsiSalvati.length > 0) {
-            // Altrimenti, seleziona in automatico il primo della lista locale
+            // Altrimenti seleziona in automatico il primo della lista 
             setCorsoSelezionatoId(corsiSalvati[0].id);
           }
         } catch (e) {
@@ -139,8 +139,6 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>Titolo Esame / Scadenza *</Text>
       <TextInput style={styles.input} placeholder="Es: Presentazione Script Python" value={titolo} onChangeText={setTitolo} />
-
-      {/* --- SELETTORE GRAFICO 100% COMPATIBILE EXPO WEB --- */}
       <Text style={styles.label}>Corso di appartenenza *</Text>
       {corsiDisponibili.length === 0 ? (
         <Text style={styles.errorText}>Nessun corso trovato nel database locale. Crea prima un corso nella sezione Carriera!</Text>
