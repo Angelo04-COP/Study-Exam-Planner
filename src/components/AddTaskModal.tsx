@@ -15,7 +15,7 @@ import Colors from '../constants/Colors';
 //tipo di dato Corso
 type Course = {
     id: string;
-    name: string;
+    nome: string;
 }
 
 //tipo Props per il componente Modal
@@ -115,7 +115,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             //si recupera il nome del corso partendo dal suo ID
             const corsoAssociato = courses.find(c => c.id == taskToEdit.course_id);
             if (corsoAssociato) {
-                setSelectedCourse(corsoAssociato.name);
+                setSelectedCourse(corsoAssociato.nome);
             } else {
                 setSelectedCourse('Nessuno');
 
@@ -143,7 +143,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
         if(!title.trim()) return;
         
         // Cerchiamo l'oggetto corso nell'array per recuperare il suo ID originale
-        const corsoTrovato = courses.find(c => c.name === selectedCourse);
+        const corsoTrovato = courses.find(c => c.nome === selectedCourse);
 
         // Invio dell'oggetto mappato e formattato al componente padre (_layout.tsx)
         onSave({
@@ -378,8 +378,8 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                         //TouchableOpacity rende qualsiasi elemento dell'interfaccia "cliccabile" o "interattivo".
                         //E' un wrapper, in quanto serve a racchiudere altri componenti per intercettare i tocchi dell'utente
                         //la props onPress è la funzione che viene eseguita quando l'utente tocca e rilascia l'eleemnto
-                        <TouchableOpacity key={c.id} onPress = {() => setSelectedCourse(c.name)} style={[styles.chip, selectedCourse === c.name && styles.chipActive]}>
-                            <Text style={{color: selectedCourse === c.name ? 'white' : 'black'}}>{c.name}</Text>
+                        <TouchableOpacity key={c.id} onPress = {() => setSelectedCourse(c.nome)} style={[styles.chip, selectedCourse === c.nome && styles.chipActive]}>
+                            <Text style={{color: selectedCourse === c.nome ? 'white' : 'black'}}>{c.nome}</Text>
                         </TouchableOpacity>
 
                     ))}

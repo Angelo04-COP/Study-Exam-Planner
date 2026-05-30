@@ -13,7 +13,7 @@ import { getCorsi, salvaNuovaAttivita } from '../../constants/storage';
 export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }) {
   const isFocused = useIsFocused(); // Intercetta se lo schermo è attivo in primo piano[cite: 2]
   const [modalVisibile, setModalVisibile] = useState(false);
-  const [corsi, setCorsi] = useState<{ id: string; name: string }[]>([]);
+  const [corsi, setCorsi] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Effetto per caricare i corsi salvati dal database locale non appena lo schermo è attivo[cite: 2]
@@ -26,7 +26,7 @@ export default function SceltaAggiuntaScreen({ navigation }: { navigation: any }
           // Mappiamo i dati nel formato richiesto dal tipo Course del Modal del tuo amico (id, name)[cite: 2]
           const formattati = corsiDispositivo.map((c: any) => ({
             id: c.id,
-            name: c.nome
+            nome: c.nome
           }));
           setCorsi(formattati);
           setModalVisibile(true); // Apriamo immediatamente la modale del tuo collega[cite: 2]

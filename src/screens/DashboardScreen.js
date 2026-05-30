@@ -12,13 +12,11 @@ export default function DashboardScreen() {
   const isFocused = useIsFocused(); 
   const [mostraVoti, setMostraVoti] = useState(false); 
 
-  // Stati per ospitare i dati reali recuperati dal dispositivo
   const [corsi, setCorsi] = useState([]);
   const [esami, setEsami] = useState([]);
   const [attivita, setAttivita] = useState([]);
   const [isLoading, setIsLoading] = useState(true); 
 
-  // Effetto per caricare i dati dal dispositivo
   useEffect(() => {
     const caricaDatiDispositivo = async () => {
       if (isFocused) {
@@ -41,7 +39,7 @@ export default function DashboardScreen() {
   }, [isFocused]);
 
   // ==========================================================
-  // [1] MEDIA PONDERATA (PULITA)
+  // [1] MEDIA PONDERATA 
   // ==========================================================
   const corsiCompletati = corsi.filter(
     corso => corso.stato === 'completato' && corso.voto_ottenuto !== null && corso.voto_ottenuto !== undefined
@@ -57,23 +55,33 @@ export default function DashboardScreen() {
   const mediaAttuale = cfuGuadagnati > 0 ? (sommaPonderata / cfuGuadagnati).toFixed(2) : "0.00";
 
   // ==========================================================
-  // [2] PROSSIME SCADENZE
+  // [2] PROSSIME SCADENZE E RIEPILOGO ATTIVITÀ (Adattato per PlanningScreen)
   // ==========================================================
-  const prossimeScadenze = attivita.filter(a => !a.completata).length;
+  // ADATTATORE: Supporta sia 'completata' che 'isCompleted'
+  const prossimeScadenze = attivita.filter(a => {
+    const isCompletata = a.completata !== undefined ? a.completata : a.isCompleted;
+    return !isCompletata;
+  }).length;
 
   const oggi = new Date().toISOString().split('T')[0]; 
   const attivitaProcessate = attivita
     .map(att => {
-      const corso = corsi.find(c => c.id === att.corso_id);
+      // ADATTATORE CHIAVI: Supporta sia l'italiano che l'inglese del PlanningScreen
+      const corsoIdReale = att.corso_id || att.course_id;
+      const corso = corsi.find(c => c.id === corsoIdReale);
+      const isCompletata = att.completata !== undefined ? att.completata : att.isCompleted;
+      const scadenzaReale = att.data_ora_scadenza || att.date || att.endDate;
+      const titoloReale = att.titolo || att.title || 'Attività senza titolo';
+
       let stato = 'da iniziare';
       let colore = '#8EBBF3';
       let prioritaOrdine = 2;
       
-      if (att.completata) {
+      if (isCompletata) {
         stato = 'completata';
         colore = '#4CAF50'; 
         prioritaOrdine = 3;
-      } else if(att.data_ora_scadenza < oggi) {
+      } else if(scadenzaReale && scadenzaReale < oggi) {
         stato = 'scaduta';
         colore = '#FF5252';
         prioritaOrdine = 1;
@@ -81,7 +89,9 @@ export default function DashboardScreen() {
 
       return {
         ...att,
-        nome_corso: corso ? corso.nome : 'Corso Sconosciuto',
+        titolo_normalizzato: titoloReale,
+        scadenza_normalizzata: scadenzaReale || 'Nessuna data',
+        nome_corso: corso ? corso.nome : 'Nessun corso',
         statoLabel: stato,
         statoColore: colore,
         prioritaOrdine: prioritaOrdine,
@@ -89,12 +99,14 @@ export default function DashboardScreen() {
     })
     .sort((a, b) => {
       if (a.prioritaOrdine !== b.prioritaOrdine) return a.prioritaOrdine - b.prioritaOrdine;
-      return new Date(a.data_ora_scadenza) - new Date(b.data_ora_scadenza); 
+      if (!a.scadenza_normalizzata || a.scadenza_normalizzata === 'Nessuna data') return 1;
+      if (!b.scadenza_normalizzata || b.scadenza_normalizzata === 'Nessuna data') return -1;
+      return new Date(a.scadenza_normalizzata) - new Date(b.scadenza_normalizzata); 
     })
     .slice(0, 8); 
 
   // ==========================================================
-  // [3] PROGRESSO ESAMI (Con Protezione Crash)
+  // [3] PROGRESSO ESAMI 
   // ==========================================================
   const esamiSuperati = esami.filter(e => e.stato === 'superato').length;
   const esamiProgrammati = esami.filter(e => e.stato === 'programmato').length;
@@ -105,24 +117,25 @@ export default function DashboardScreen() {
     { value: esamiProgrammati, color: '#8EBBF3', text:'Programmati' },
     { value: esamiDaInziare, color: '#E2E2E2', text:'Da Iniziare' },
   ];
-  
-  // Se non c'è assolutamente niente da mostrare, passiamo un cerchio grigio per non far esplodere la libreria
   const pieDataSicuri = (esamiSuperati === 0 && esamiProgrammati === 0 && esamiDaInziare === 0) 
-    ? [{ value: 1, color: '#E2E2E2' }] 
-    : pieData;
+    ? [{ value: 1, color: '#E2E2E2' }] : pieData;
 
   // ==========================================================
-  // [4] GRAFICO A BARRE (Ore)
+  // [4] GRAFICO A BARRE (Ore Pianificate vs Effettive)
   // ==========================================================
   const orePianificate = [0, 0, 0, 0, 0, 0, 0];
   const oreEffettive = [0, 0, 0, 0, 0, 0, 0];
   const etichetteGiorni = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
   attivita.forEach(att => {
-    if (att.data_ora_inizio && att.tempo_stimato_minuti) {
-      const dataInizio = new Date(att.data_ora_inizio);
-      const giornoIndice = (dataInizio.getDay() + 6) % 7; 
-      orePianificate[giornoIndice] += (att.tempo_stimato_minuti / 60);
+    // ADATTATORE GRAFICO: Legge 'date' ed 'estimatedTime' di PlanningScreen.tsx
+    const dataInizioCorretta = att.data_ora_inizio || att.date || att.startDate;
+    const tempoStimatoCorretto = att.tempo_stimato_minuti !== undefined ? att.tempo_stimato_minuti : att.estimatedTime;
+
+    if (dataInizioCorretta && tempoStimatoCorretto) {
+      const dataInizio = new Date(dataInizioCorretta);
+      const giornoIndice = (dataInizio.getDay() + 6) % 7; // Trasla domenica a fine array
+      orePianificate[giornoIndice] += (tempoStimatoCorretto / 60); // Converte da minuti a ore nel grafico
     }
   });
 
@@ -151,18 +164,17 @@ export default function DashboardScreen() {
   const maxOreGrafico = maxAssoluto > 0 ? Math.ceil(maxAssoluto) + 1 : 8;
 
   // ==========================================================
-  // [5] GRAFICO A LINEE (Con Correzione Nomi Variabili)
+  // [5] GRAFICO A LINEE (Andamento Voti)
   // ==========================================================
   const esamiSuperatiOrdinati = [...esami]
     .filter(esame => esame.stato === 'superato' && esame.voto_risultato)
     .sort((a, b) => new Date(a.data) - new Date(b.data)); 
 
   let sommaVoti = 0;
-  // ATTENZIONE QUI: Cambiato il nome per non confliggere con la sommaPonderata della riga 59
   let sommaPonderataGrafico = 0; 
   let totalCfu = 0;
 
-  const dataMediaPonderataRaw = esamiSuperatiOrdinati.map((esame, index) => {
+  const dataMediaPonderataRaw = esamiSuperatiOrdinati.map((esame) => {
     const corso = corsi.find(c => c.id === esame.corso_id);
     sommaPonderataGrafico += (esame.voto_risultato * (corso ? corso.cfu : 0));
     totalCfu += (corso ? corso.cfu : 0);
@@ -180,10 +192,8 @@ export default function DashboardScreen() {
     };
   });
 
-  // PROTEZIONE ANTI-CRASH: Se abbiamo 0 esami superati, inseriamo un punto "finto" a zero
   const dataMediaPonderata = dataMediaPonderataRaw.length > 0 ? dataMediaPonderataRaw : [{ value: 0, label: '-' }];
   const dataMediaAritmetica = dataMediaAritmeticaRaw.length > 0 ? dataMediaAritmeticaRaw : [{ value: 0, label: '-' }];
-
 
   // ==========================================================
   // [D] INSIGHTS CORSI
@@ -215,22 +225,14 @@ export default function DashboardScreen() {
 
   const attivitaApertePerCorso = {};
   attivita.forEach(att => {
-    if (!att.completata) {
-      attivitaApertePerCorso[att.corso_id] = (attivitaApertePerCorso[att.corso_id] || 0) + 1;
+    const isCompletata = att.completata !== undefined ? att.completata : att.isCompleted;
+    if (!isCompletata) {
+      const corsoId = att.corso_id || att.course_id;
+      if(corsoId) {
+          attivitaApertePerCorso[corsoId] = (attivitaApertePerCorso[corsoId] || 0) + 1;
+      }
     }
   });
-
-  const classificaCorsiAperti = Object.keys(attivitaApertePerCorso)
-    .map(corsoId => {
-      const corso = corsi.find(c => c.id === corsoId);
-      return {
-        id: corsoId,
-        nome: corso ? corso.nome : 'Sconosciuto',
-        conteggio: attivitaApertePerCorso[corsoId]
-      };
-    })
-    .sort((a, b) => b.conteggio - a.conteggio) 
-    .slice(0, 3); 
 
   // --- CARICAMENTO SCHERMATA ---
   if (isLoading) {
@@ -249,7 +251,7 @@ export default function DashboardScreen() {
     <ScrollView style={styles.container}>
       <Text style={styles.headerTitle}>CRUSCOTTO</Text>
 
-      {/* ----------- SEZIONE 1: ORE STUDIO ----------- */}
+      {/* ----------- SEZIONE 1: ORE STUDIO E GRAFICI ----------- */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>{mostraVoti ? 'ANDAMENTO VOTI' : 'STUDIO ORE SETTIMANALI'}</Text>
@@ -322,9 +324,8 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      {/* ----------- SEZIONE 2: RIGA CENTRALE ----------- */}
+      {/* ----------- SEZIONE 2: METRICHE ----------- */}
       <View style={styles.row}>
-        
         <View style={[styles.card, styles.halfCard]}>
           <Text style={styles.cardTitle}>PROGRESSO ESAMI</Text>
           <View style={styles.pieContent}>
@@ -357,19 +358,16 @@ export default function DashboardScreen() {
         <View style={[styles.card, styles.halfCard]}>
           <Text style={styles.cardTitle}>CFU GUADAGNATI:</Text>
           <Text style={styles.statValue}>{cfuGuadagnati} / {cfuTotali}</Text>
-          
           <View style={styles.divider} />
-          
           <Text style={styles.cardTitle}>MEDIA PONDERATA:</Text>
           <Text style={styles.statValue}>{mediaAttuale}</Text>
-          
           <View style={styles.divider} />
-          
           <Text style={styles.cardTitle}>ATTIVITÀ DA FARE:</Text>
           <Text style={styles.statValue}>{prossimeScadenze}</Text>
         </View>
       </View>
 
+      {/* ----------- SEZIONE 3: TIMELINE CORSI ----------- */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>TIMELINE CORSI ATTIVI</Text>
         <View style={{ marginTop: 10 }}>
@@ -404,6 +402,7 @@ export default function DashboardScreen() {
         </View>
       </View>
 
+      {/* ----------- SEZIONE 4: CRONOLOGIA E PROSSIME ATTIVITÀ ----------- */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>RIEPILOGO ATTIVITÀ</Text>
         {attivitaProcessate.map((attivita) => (
@@ -414,7 +413,7 @@ export default function DashboardScreen() {
                 styles.attivitaTitolo,
                 attivita.statoLabel === 'completata' && { textDecorationLine: 'line-through', color: '#94a3b8' }
               ]}>
-                {attivita.titolo}
+                {attivita.titolo_normalizzato}
               </Text>
               <Text style={[
                 styles.attivitaCorso,
@@ -422,7 +421,7 @@ export default function DashboardScreen() {
               ]}>
                 {attivita.nome_corso} • 
                 {attivita.statoLabel === 'scaduta' ? ' SCADUTA: ' : ' Scadenza: '} 
-                {attivita.data_ora_scadenza}
+                {attivita.scadenza_normalizzata}
               </Text>
             </View>
             <Text style={styles.arrowIcon}>›</Text>
