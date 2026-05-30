@@ -380,29 +380,42 @@ const PlanningScreen = () => {
             sincronizzati reattivamente con gli stati dei filtri*/}
             <View style={styles.filterContainer}>
                 {/*Sezione A: Ricerca/Filtro per Corso
-                    Questa riga renderizza un selettore orizzontale scorrevole. Tramite l'operatore spread [...], 
-                    uniamo la stringa fissa 'Tutte' (che funge da tasto di reset) all'elenco dei nomi estratti 
-                    dinamicamente dallo stato 'courses'. Cliccando su un chip, la funzione 'setCorsoFiltro' 
-                    salva il nome del corso selezionato modificando lo stato e scatenando il filtro grafico.
+                    Questa sezione renderizza un selettore orizzontale scorrevole. Il pulsante di reset 'Tutte' 
+                    viene gestito separatamente come punto di sblocco iniziale. Successivamente, tramite il 
+                    metodo .map(), si cicla l'array di oggetti 'courses' recuperati dal database locale. 
+                    Cliccando su un chip la funzione 'setCorsoFiltro' salva l'ID univoco del corso (corso.id) 
+                    per azzerare ogni conflitto con le chiavi esterne, mentre a schermo viene stampata la stringa testuale (corso.nome) 
+                    per preservare un'esperienza utente pulita.
                     La proprietà key serve a assegnare a ogni singolo chip un identificatore unico e fisso. 
                     In questo modo, quando l'utente cambia un filtro, l'applicazione riconosce all'istante quale pulsante 
                     è stato premuto ed evita di dover ridisegnare l'intera barra, eliminando bug grafici e lag.*/}
                 <Text style={styles.filterLabel}>FILTRA PER CORSO: </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                    {/*Si generano dinamicamente i pulsanti includendo l'opzione di reset 'Tutte' unita ai corsi reali estratti*/}
-                    {['Tutte', ...courses.map(c => c.nome)].map((nomeCorso) => (
+                    {/* Pulsante di Reset 'Tutte' gestito separatamente */}
+                    <TouchableOpacity
+                        key="all-courses"
+                        onPress={() => setCorsoFiltro('Tutte')}
+                        style={[styles.filterTailoredChip, corsoFiltro === 'Tutte' && styles.filterChipActive]}
+                    >   
+                        <Text style={[styles.filterChipText, corsoFiltro === 'Tutte' && styles.filterChipTextActive]}>
+                            Tutte
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Generazione dinamica dei corsi reali usando l'ID per la logica e il Nome per la grafica */}
+                    {courses.map((corso) => (
                         <TouchableOpacity
-                            key={nomeCorso}
-                            onPress={() => setCorsoFiltro(nomeCorso)}
-                            style={[styles.filterTailoredChip, corsoFiltro === nomeCorso && styles.filterChipActive]}
-                        >   
-                            <Text style={[styles.filterChipText, corsoFiltro === nomeCorso && styles.filterChipTextActive]}>
-                                {nomeCorso}
+                            key={corso.id} //identificativo unico
+                            onPress={() => setCorsoFiltro(corso.id)} //salva l'ID nel filtro
+                            style={[styles.filterTailoredChip, corsoFiltro === corso.id && styles.filterChipActive]}
+                        >
+                            <Text style={[styles.filterChipText, corsoFiltro === corso.id && styles.filterChipTextActive]}>
+                                {corso.nome}
                             </Text>
+
                         </TouchableOpacity>
-
-
                     ))}
+                
                 </ScrollView>
 
                 {/*Sezione B: Stato dell'attività (Completate / Da Completare) 
@@ -478,13 +491,11 @@ const PlanningScreen = () => {
                         // Verifica rigida sulla data del calendario: isola solo i task del giorno selezionato.
                         .filter(item => item.date === selectedDate)
                         // --- STEP 2: NUOVO FILTRO PER CORSO ASSOCIATO ---
-                        // Se lo stato 'corsoFiltro' è impostato su 'Tutte', ritorna true facendo passare l'attività/sessione
-                        // Altrimenti, effettua una ricerca inversa nell'array 'courses' usando l'id dell'attività (item.course_id),
-                        // estrae il nome reale dell'insegnamento e verifica se combacia con il chip (componente) cliccato dall'utente.
+                        // Avendo standardizzato il filtro sull'ID, si confronta
+                        //  direttamente la chiave esterna 'item.course_id' con lo stato 'corsoFiltro'.
                         .filter(item => {
                             if (corsoFiltro === 'Tutte') return true;
-                            const corsoAssociato = courses.find(c => c.id === item.course_id);
-                            return corsoAssociato && corsoAssociato.nome === corsoFiltro;
+                            return item.course_id === corsoFiltro;
 
                         })
                         // --- STEP 3: NUOVO FILTRO SULLO STATO DI AVANZAMENTO ---
