@@ -9,18 +9,16 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
   const esameDaModificare = route.params?.esameDaModificare;
   const isFocused = useIsFocused();
 
-  // Stati del form d'esame
   const [titolo, setTitolo] = useState('');
   const [data, setData] = useState('');
   const [tipologia, setTipologia] = useState('');
   const [note, setNote] = useState('');
   
-  // --- STATI CORRETTI (Senza spazi interni che rompevano TypeScript) ---
   const [corsiDisponibili, setCorsiDisponibili] = useState<{ id: string; nome: string }[]>([]);
   const [corsoSelezionatoId, setCorsoSelezionatoId] = useState('');
   const [loadingCorsi, setLoadingCorsi] = useState(true);
 
-  // 1. Carica i corsi reali salvati nel dispositivo
+  // Caricamento corsi salvati
   useEffect(() => {
     const caricaCorsi = async () => {
       if (isFocused) {
@@ -46,7 +44,7 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
     caricaCorsi();
   }, [isFocused, esameDaModificare]);
 
-  // Precompilazione campi testuali in modalità modifica
+  // Precompilazione campi in modalità modifica
   useEffect(() => {
     if (esameDaModificare) {
       setTitolo(esameDaModificare.titolo || '');
@@ -56,6 +54,7 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
     }
   }, [esameDaModificare]);
 
+  // Funzione di salvataggio dell'esame (creazione e modifica)
   const handleSalvaEsame = async () => {
     if (!titolo.trim()) {
       Alert.alert("Errore", "Il nome dell'esame è obbligatorio!");
@@ -70,24 +69,46 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
       return;
     }
 
+    const dataEsameStr: string = data.trim() || '';
+
+    if (!dataEsameStr) {
+      Alert.alert("Errore", "La data dell'esame è obbligatoria!");
+      return; 
+    }
+    
+    const corsoSelezionato = corsiDisponibili.find(c => c.id === corsoSelezionatoId) as any;
+
+    if (corsoSelezionato && corsoSelezionato.data_inizio) {
+      const dataEsame = new Date(dataEsameStr);
+      const dataInizioCorso = new Date(corsoSelezionato.data_inizio);
+
+      if (!isNaN(dataEsame.getTime()) && !isNaN(dataInizioCorso.getTime())) {
+        if (dataEsame < dataInizioCorso) {
+          Alert.alert(
+            "Data non valida", 
+            `L'esame non può essere antecedente alla data di inizio del corso (${corsoSelezionato.data_inizio}).`
+          );
+          return; 
+        }
+      }
+    }
+
     try {
       if (esameDaModificare) {
-        // OPERAZIONE: AGGIORNAMENTO DI UN ESAME ESISTENTE
         const esameAggiornato = {
           ...esameDaModificare,
           titolo: titolo.trim(),
           data: data.trim(),
           tipologia: tipologia.trim(),
           note: note.trim(),
-          corso_id: corsoSelezionatoId, // Aggiorna l'ID associato se modificato
+          corso_id: corsoSelezionatoId,
         };
         await aggiornaEsame(esameAggiornato);
         Alert.alert("Successo", "Esame modificato con successo!");
       } else {
-        // OPERAZIONE: CREAZIONE NUOVO RECORD
         const nuovoEsame = {
           id: 'e' + Date.now(),
-          corso_id: corsoSelezionatoId, // <<< DATO REALE CORRETTO E DINAMICO
+          corso_id: corsoSelezionatoId, 
           titolo: titolo.trim(),
           data: data.trim() || '2026-06-18',
           tipologia: tipologia.trim(),
@@ -174,7 +195,6 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 5, marginTop: 15 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16, backgroundColor: '#f9f9f9' },
   
-  // Stili per il selettore dei corsi nativo web/mobile
   listaCorsiGuscio: { gap: 8, marginTop: 4, marginBottom: 5 },
   opzioneCorsoCard: {
     flexDirection: 'row',
