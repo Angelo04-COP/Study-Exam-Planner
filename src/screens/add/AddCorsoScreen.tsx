@@ -3,10 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 import { aggiornaCorso, salvaNuovoCorso } from '../../constants/storage';
 
-// Inserito 'route' nei parametri accettati, in linea con la pagina 19 delle slide del docente
 export default function NuovoCorsoScreen({ route, navigation }: { route: any, navigation: any }) {
   
-  // Recuperiamo l'eventuale parametro di modifica passato dalla rotta precedente
+  // Recupero dell'eventuale parametro di modifica passato dalla route precedente
   const corsoDaModificare = route.params?.corsoDaModificare;
 
   const [nome, setNome] = useState('');
@@ -14,15 +13,14 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
   const [cfu, setCfu] = useState('');
   const [descrizione, setDescrizione] = useState('');
   const [votoDesiderato, setVotoDesiderato] = useState('');
-  
-  // NUOVI STATI: Gestione delle date di inizio e fine corso
-  const [dataInizio, setDataInizio] = useState(''); // Valore di default standard
-  const [dataFine, setDataFine] = useState('');   // Valore di default standard
-  
-  const semestre = "Secondo Semestre"; 
-  const annoAccademico = "2025/2026";
 
-  // Se siamo in modalità modifica, compiliamo automaticamente i campi all'avvio
+  const [dataInizio, setDataInizio] = useState(''); 
+  const [dataFine, setDataFine] = useState('');   
+  
+  const [semestre, setSemestre] = useState('');
+  const [annoAccademico, setAnnoAccademico] = useState('');
+
+  //Precompilazione campi in modalità modifica
   useEffect(() => {
     if (corsoDaModificare) {
       setNome(corsoDaModificare.nome || '');
@@ -30,17 +28,16 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
       setCfu(corsoDaModificare.cfu ? corsoDaModificare.cfu.toString() : '');
       setDescrizione(corsoDaModificare.descrizione || '');
       setVotoDesiderato(corsoDaModificare.voto_desiderato ? corsoDaModificare.voto_desiderato.toString() : '');
-      
-      // Carica le date salvate nel record esistente
       setDataInizio(corsoDaModificare.data_inizio || '');
       setDataFine(corsoDaModificare.data_fine || '');
+      setSemestre(corsoDaModificare.semestre || '');
+      setAnnoAccademico(corsoDaModificare.anno_accademico || '');
     }
   }, [corsoDaModificare]);
 
-  // Funzione helper per calcolare lo stato in base alle date (Formato YYYY-MM-DD)
+  // Funzione helper per calcolare lo stato in base alle date 
   const calcolaStatoCorso = (inizio: string, fine: string): string => {
-    const oggiStr = new Date().toISOString().split('T')[0]; // Ottiene la data odierna in formato YYYY-MM-DD
-
+    const oggiStr = new Date().toISOString().split('T')[0]; 
     if (inizio > oggiStr) {
       return 'da iniziare';
     } else if (inizio <= oggiStr && fine >= oggiStr) {
@@ -50,29 +47,68 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
     }
   };
 
+  // Funzione di salvataggio del corso (creazione e modifica)
   const handleSalvaCorso = async () => {
     if (!nome.trim()) {
       Alert.alert("Errore", "Il nome del corso è obbligatorio!");
       return;
     }
 
-    // Calcoliamo lo stato in modo dinamico basandoci sulle date inserite
+    const annoAccTrim = annoAccademico.trim();
+    const inizioTrim = dataInizio.trim();
+    const fineTrim = dataFine.trim();
+
+    if (annoAccTrim && inizioTrim && fineTrim) {
+
+      const partiAnno = annoAccTrim.split('/');
+      if (partiAnno.length === 2) {
+        const annoInizioAccademico = partiAnno[0]; 
+        const annoFineAccademico = partiAnno[1];   
+
+        const annoDellaDataInizio = inizioTrim.substring(0, 4);
+        const annoDellaDataFine = fineTrim.substring(0, 4);
+
+        const inizioValido = (annoDellaDataInizio === annoInizioAccademico || annoDellaDataInizio === annoFineAccademico);
+        const fineValido = (annoDellaDataFine === annoInizioAccademico || annoDellaDataFine === annoFineAccademico);
+
+        if (!inizioValido || !fineValido) {
+          Alert.alert(
+            "Errore Date", 
+            `Le date inserite devono essere coerenti con l'anno accademico ${annoAccTrim}.`
+          );
+          return;
+        }
+        if (inizioTrim && fineTrim) {
+          if (inizioTrim > fineTrim) {
+          Alert.alert(
+            "Errore Cronologico", 
+            "La data di inizio non può essere successiva alla data di fine corso!"
+          );
+          return; 
+      }
+    }
+      } else {
+        Alert.alert("Errore Formato", "L'anno accademico deve essere nel formato AAAA/AAAA (es. 2025/2026).");
+        return;
+      }
+    }
+
+    // Calcolo dello stato in modo dinamico 
     const statoDinamico = calcolaStatoCorso(dataInizio.trim(), dataFine.trim());
 
-    // Costruiamo l'oggetto preservando i dati storici se stiamo modificando
+    // Costruzione dell'oggetto 
     const corsoSalvato = {
       id: corsoDaModificare ? corsoDaModificare.id : 'c' + Date.now(), 
       nome: nome.trim(),
       docente: docente.trim(),
-      semestre: corsoDaModificare ? corsoDaModificare.semestre : semestre,
-      anno_accademico: corsoDaModificare ? corsoDaModificare.anno_accademico : annoAccademico,
+      semestre: semestre.trim(),
+      anno_accademico: annoAccademico.trim(),
       cfu: cfu ? parseInt(cfu, 10) : 0,
       descrizione: descrizione.trim(),
       
-      // APPLICAZIONE DELLA NUOVA LOGICA RICHIESTA
       stato: statoDinamico, 
       
-      voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : 18,
+      voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : null,
       voto_ottenuto: corsoDaModificare ? corsoDaModificare.voto_ottenuto : null, 
       data_inizio: dataInizio.trim(),
       data_fine: dataFine.trim(),
@@ -110,11 +146,15 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
       <Text style={styles.label}>Voto Desiderato (Esame)</Text>
       <TextInput style={styles.input} placeholder="Es: 28" keyboardType="numeric" value={votoDesiderato} onChangeText={setVotoDesiderato} />
 
-      {/* NUOVO CAMPO: DATA INIZIO */}
+      <Text style={styles.label}>Semestre</Text>
+      <TextInput style={styles.input} placeholder="Es: Primo Semestre, Secondo Semestre" value={semestre} onChangeText={setSemestre} />
+
+      <Text style={styles.label}>Anno Accademico</Text>
+      <TextInput style={styles.input} placeholder="Es: 2025/2026" value={annoAccademico} onChangeText={setAnnoAccademico} />
+
       <Text style={styles.label}>Data Inizio Corso (YYYY-MM-DD)</Text>
       <TextInput style={styles.input} placeholder="Es: 2026-03-01" value={dataInizio} onChangeText={setDataInizio} />
 
-      {/* NUOVO CAMPO: DATA FINE */}
       <Text style={styles.label}>Data Fine Corso (YYYY-MM-DD)</Text>
       <TextInput style={styles.input} placeholder="Es: 2026-06-15" value={dataFine} onChangeText={setDataFine} />
 
