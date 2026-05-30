@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import {useState, useEffect} from 'react';
-import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert} from 'react-native';
 import Modal from 'react-native-modal';
 import Colors from '../constants/Colors';
 
@@ -140,7 +140,13 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
     }, [taskToEdit, isVisible, date, courses]);
 
     const handleSave = () => {
-        if(!title.trim()) return;
+        if (!title.trim()) {
+        Alert.alert(
+            "Campi obbligatori", 
+            "Inserisci un titolo per poter salvare l'attività o la sessione."
+        );
+        return; // Interrompe l'esecuzione evitando il salvataggio
+        }
         
         // Cerchiamo l'oggetto corso nell'array per recuperare il suo ID originale
         const corsoTrovato = courses.find(c => c.nome === selectedCourse);
