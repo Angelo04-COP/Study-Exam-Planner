@@ -75,6 +75,17 @@ const PlanningScreen = () => {
     // dei dati iniziali da AsyncStorage sarà stata completata con successo.
    const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
+   //stato che tiene traccia della selezione per lo stato dei compiti ('Tutte', 'Da completare', 'Completate')
+   const [statoFiltro, setStatoFiltro] = useState<string>('Tutte');
+
+   //stato che memorizza il filtro sull'urgenza impostato dall'utente ('Tutte', 'Alta', 'Media', 'Bassa')
+   const [prioritaFiltro, setPrioritaFiltro] = useState<string>('Tutte');
+
+   //stato che isola le attività collegate a un corso specifico memorizzandone il nome ('Tutte' o nome reale)
+   const [corsoFiltro, setCorsoFiltro] = useState<string>('Tutte');
+
+
+
     /**
      * CARICAMENTO DATI All'avvio del componente
      * A differenza di un tradizionale hook di inizializzazione con array di dipendenze vuoto, questo useEffect 
@@ -365,6 +376,81 @@ const PlanningScreen = () => {
                 theme={{ todayTextColor: Colors.primary, arrowColor: Colors.primary}}
             />
 
+            {/*Questa View racchiude l'interfaccia di filtraggio rapido. Ogni riga genera orizzontalmente i componenti selezionabili,
+            sincronizzati reattivamente con gli stati dei filtri*/}
+            <View style={styles.filterContainer}>
+                {/*Sezione A: Ricerca/Filtro per Corso
+                    Questa riga renderizza un selettore orizzontale scorrevole. Tramite l'operatore spread [...], 
+                    uniamo la stringa fissa 'Tutte' (che funge da tasto di reset) all'elenco dei nomi estratti 
+                    dinamicamente dallo stato 'courses'. Cliccando su un chip, la funzione 'setCorsoFiltro' 
+                    salva il nome del corso selezionato modificando lo stato e scatenando il filtro grafico.
+                    La proprietà key serve a assegnare a ogni singolo chip un identificatore unico e fisso. 
+                    In questo modo, quando l'utente cambia un filtro, l'applicazione riconosce all'istante quale pulsante 
+                    è stato premuto ed evita di dover ridisegnare l'intera barra, eliminando bug grafici e lag.*/}
+                <Text style={styles.filterLabel}>FILTRA PER CORSO: </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                    {/*Si generano dinamicamente i pulsanti includendo l'opzione di reset 'Tutte' unita ai corsi reali estratti*/}
+                    {['Tutte', ...courses.map(c => c.nome)].map((nomeCorso) => (
+                        <TouchableOpacity
+                            key={nomeCorso}
+                            onPress={() => setCorsoFiltro(nomeCorso)}
+                            style={[styles.filterTailoredChip, corsoFiltro === nomeCorso && styles.filterChipActive]}
+                        >   
+                            <Text style={[styles.filterChipText, corsoFiltro === nomeCorso && styles.filterChipTextActive]}>
+                                {nomeCorso}
+                            </Text>
+                        </TouchableOpacity>
+
+
+                    ))}
+                </ScrollView>
+
+                {/*Sezione B: Stato dell'attività (Completate / Da Completare) 
+                    Questa sezione disegna tre pulsanti statici ('Tutte', 'Da Completare', 'Completate') per 
+                    consentire il filtraggio delle attività in base al loro ciclo di vita operativo. Il tocco su 
+                    un pulsante aggiorna lo stato 'statoFiltro', modificando istantaneamente lo stile visivo 
+                    del chip selezionato (styles.filterChipActive) per fornire un chiaro feedback all'utente 
+                    La proprietà key serve a assegnare a ogni singolo chip un identificatore unico e fisso. 
+                    In questo modo, quando l'utente cambia un filtro, l'applicazione riconosce all'istante quale pulsante 
+                    è stato premuto ed evita di dover ridisegnare l'intera barra, eliminando bug grafici e lag.*/}
+                <Text style={styles.filterLabel}>FILTRA PER STATO (SOLO ATTIVITA'):</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                    {['Tutte', 'Da completare', 'Completate'].map((stato) => (
+                        <TouchableOpacity
+                            key={stato}
+                            onPress={() => setStatoFiltro(stato)}
+                            style={[styles.filterTailoredChip, statoFiltro === stato && styles.filterChipActive]}
+                        >         
+                            <Text style={[styles.filterChipText, statoFiltro === stato && styles.filterChipTextActive]}>
+                                {stato}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+                
+                {/*Sezione C: Livello di priorità dell'Attivita
+                    Questo blocco genera i pulsanti chip per il filtraggio delle attività in base alla priorità. 
+                    Mappa le quattro stringhe opzionali legandole tramite un click alla state setter function 
+                    'setPrioritaFiltro'. 
+                    La proprietà key serve a assegnare a ogni singolo chip un identificatore unico e fisso. 
+                    In questo modo, quando l'utente cambia un filtro, l'applicazione riconosce all'istante quale pulsante 
+                    è stato premuto ed evita di dover ridisegnare l'intera barra, eliminando bug grafici e lag."*/}
+                <Text style={styles.filterLabel}>FILTRA PER PRIORITA' (SOLO ATTIVITA'):</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+                    {['Tutte', 'Alta', 'Media', 'Bassa'].map((prior) => (
+                        <TouchableOpacity
+                            key={prior}
+                            onPress={() => setPrioritaFiltro(prior)}
+                            style={[styles.filterTailoredChip, prioritaFiltro === prior && styles.filterChipActive]}
+                        >         
+                            <Text style={[styles.filterChipText, prioritaFiltro === prior && styles.filterChipTextActive]}>
+                                {prior}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
             <View style = {styles.todoContainer}>
                 <Text style= {styles.subTitle}>Agenda del {selectedDate}</Text>
                 {/*FlatList è un componente List Views; serve per reinderizzare una lista
@@ -375,6 +461,8 @@ const PlanningScreen = () => {
                 <FlatList
                     // In data, invece di passare tutta la lista, si passano solo quegli elementi dell'array items,
                     // cioè quei task la cui data corrisponde a quella selezionata nel calendario (selectedDate)
+                    // Subito dopo, si agganciano in cascata tre controlli sequenziali (.filter) che valutano simultaneamente se l'attività/sessione
+                    // rispetta i parametri di Corso Selezionato, Stato (isCompleted) e Livello di priorità
                     // La proprietà keyExtractor serve ad assegnare un'identità univoca a ogni elemento della lista: 
                     //   - (item) è il singolo oggetto estratto dall'array passato alla prop data
                     //    - item.id è il valore che verrà usato come chiave
@@ -385,7 +473,47 @@ const PlanningScreen = () => {
                     //  alla ScrollView principale che fa da contenitore alla pagina
                     // - nestedScrollEnabled={true}: permette al sistema operativo di calcolare correttamente i tocchi tra componenti nidificati,
                     //   evitando conflitti di input e preservando l'esatto layout grafico
-                    data={items.filter(item => item.date === selectedDate)}
+                    data={items
+                        // --- STEP 1: FILTRO TEMPORALE ORIGINALE ---
+                        // Verifica rigida sulla data del calendario: isola solo i task del giorno selezionato.
+                        .filter(item => item.date === selectedDate)
+                        // --- STEP 2: NUOVO FILTRO PER CORSO ASSOCIATO ---
+                        // Se lo stato 'corsoFiltro' è impostato su 'Tutte', ritorna true facendo passare l'attività/sessione
+                        // Altrimenti, effettua una ricerca inversa nell'array 'courses' usando l'id dell'attività (item.course_id),
+                        // estrae il nome reale dell'insegnamento e verifica se combacia con il chip (componente) cliccato dall'utente.
+                        .filter(item => {
+                            if (corsoFiltro === 'Tutte') return true;
+                            const corsoAssociato = courses.find(c => c.id === item.course_id);
+                            return corsoAssociato && corsoAssociato.nome === corsoFiltro;
+
+                        })
+                        // --- STEP 3: NUOVO FILTRO SULLO STATO DI AVANZAMENTO ---
+                        // Se il filtro è su 'Tutte', facciamo passare sia le attività che le sessioni.
+                        // Se il filtro è su 'Completate' o 'Da Completare', le sessioni vengono escluse a priori (ritornano false),
+                        // e viene controllato lo stato di completamento solo sulle attività, quindi vengono filtrate come completate solo
+                        // le attività per cui item.isCompleted è true e vengono filtrate come non completate le attività 
+                        // per cui item.isCompleted è false 
+                        .filter(item => {
+                            if (statoFiltro === 'Tutte') return true;
+                            if (item.type === 'sessione') return false;
+                            return statoFiltro === 'Completate' ? item.isCompleted : !item.isCompleted;
+
+
+                        })
+                        // --- STEP 4: NUOVO FILTRO SUL LIVELLO DI PRIORITÀ ---
+                        // Se lo stato 'prioritaFiltro' è 'Tutte', lascia transitare tutti gli elementi.
+                        // Se l'utente isola una priorità, le sessioni devono essere tassativamente escluse (ritornano false), 
+                        // poiché non possiedono una priorità.
+                        // Nel caso di un'attività, si estrae il valore della priorità dell'oggetto (es. 'Alta') e si 
+                        // verifica la perfetta uguaglianza testuale (item.priority === prioritaFiltro).
+                        .filter(item => {
+                            if (prioritaFiltro === 'Tutte') return true;
+                            if (item.type === 'sessione') return false;
+                            return item.priority === prioritaFiltro;
+
+
+                        })
+                    }
                     keyExtractor={(item) => item.id}
                     scrollEnabled={false}
                     nestedScrollEnabled={true}
@@ -606,6 +734,54 @@ const styles = StyleSheet.create({
         marginTop: 25,
         paddingHorizontal: 20,
         marginBottom: 15
+    },
+    filterContainer: {
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        backgroundColor: '#f8fafc',
+        borderRadius: 14,
+        marginHorizontal: 16,
+        marginBottom: 5,
+        marginTop: 10,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        //ombra leggere per conferire profondità visiva
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 1},
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1
+    },
+    filterLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#64748b',
+        marginBottom: 6,
+        letterSpacing: 0.6
+    },
+    filterScroll: {
+        marginBottom: 12 //fornisce lo stacco geometrico tra le diverse categorie di filtri
+    },
+    filterTailoredChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        backgroundColor: '#e2e8f0',
+        borderRadius: 20,
+        marginRight: 8
+    },
+    filterChipActive: {
+        //tonalità blu primaria per identificare lo stato di selezione attivo
+        backgroundColor: '#177AD5'
+    },
+    filterChipText: {
+        fontSize: 12,
+        color: '#334155'
+
+    },
+    filterChipTextActive: {
+        color: '#ffffff',
+        fontWeight: 'bold'
+
     },
     todoContainer: {flex: 1, padding: 20},
     subTitle: {fontSize: 16, fontWeight: 'bold', marginBottom: 15, color: '#34495e'},
