@@ -6,6 +6,7 @@ import { mockAttivita, mockCorsi, mockEsami } from './mockData';
 const CHIAVE_CORSI = '@planner_corsi';
 const CHIAVE_ESAMI = '@planner_esami';
 const CHIAVE_ATTIVITA = '@planner_attivita';
+const CHIAVE_STORICO_TIMER = '@planner_storico_timer';
 
 /**
  * 1. INIZIALIZZA LO STORAGE
@@ -229,6 +230,33 @@ export const verbalizzaEsitoEsame = async (idEsame, corsoId, esito, voto = null)
     return true;
   } catch (error) {
     console.error("Errore durante la verbalizzazione:", error);
+    return false;
+  }
+};
+
+// ==========================================
+// OPERAZIONI PER LO STORICO TIMER
+// ==========================================
+
+export const getStoricoTimer = async () => {
+  try {
+    const dati = await AsyncStorage.getItem(CHIAVE_STORICO_TIMER);
+    return dati ? JSON.parse(dati) : [];
+  } catch (error) {
+    console.error("Errore nel recupero dello storico timer:", error);
+    return [];
+  }
+};
+
+export const salvaNuovoTimer = async (nuovoRecord) => {
+  try {
+    const attuali = await getStoricoTimer();
+    const listaAggiornata = [nuovoRecord, ...attuali];
+    await AsyncStorage.setItem(CHIAVE_STORICO_TIMER, JSON.stringify(listaAggiornata));
+    console.log("Nuovo record timer salvato sul telefono!");
+    return true;
+  } catch (error) {
+    console.error("Errore nel salvataggio del record timer:", error);
     return false;
   }
 };
