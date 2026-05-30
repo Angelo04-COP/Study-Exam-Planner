@@ -1,7 +1,7 @@
 // src/screens/add/AddEsameScreen.tsx
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { aggiornaEsame, getCorsi, salvaNuovoEsame } from '../../constants/storage';
 
 export default function NuovoEsameScreen({ route, navigation }: { route: any, navigation: any }) {
@@ -137,63 +137,67 @@ export default function NuovoEsameScreen({ route, navigation }: { route: any, na
 
   return (
     <KeyboardAvoidingView
-    style={{ flex: 1 }}
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-  >
-    {/* Questo permette di chiudere la tastiera cliccando fuori dai campi */}
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.label}>Titolo Esame / Scadenza *</Text>
-      <TextInput style={styles.input} placeholder="Es: Presentazione Script Python" value={titolo} onChangeText={setTitolo} />
-      <Text style={styles.label}>Corso di appartenenza *</Text>
-      {corsiDisponibili.length === 0 ? (
-        <Text style={styles.errorText}>Nessun corso trovato nel database locale. Crea prima un corso nella sezione Carriera!</Text>
-      ) : (
-        <View style={styles.listaCorsiGuscio}>
-          {corsiDisponibili.map((corso) => {
-            const IsSelezionato = corsoSelezionatoId === corso.id;
-            return (
-              <TouchableOpacity
-                key={corso.id}
-                style={[
-                  styles.opzioneCorsoCard,
-                  IsSelezionato && styles.opzioneCorsoSelezionata
-                ]}
-                activeOpacity={0.8}
-                onPress={() => setCorsoSelezionatoId(corso.id)}
-              >
-                <View style={[styles.cerchioCheck, IsSelezionato && styles.cerchioCheckAttivo]}>
-                  {IsSelezionato && <View style={styles.pallinoInterno} />}
-                </View>
-                <Text style={[styles.testoCorsoOpzione, IsSelezionato && styles.testoCorsoSelezionato]}>
-                  {corso.nome}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
-      <Text style={styles.label}>Data dell'Appello (YYYY-MM-DD)</Text>
-      <TextInput style={styles.input} placeholder="Es: 2026-06-18" value={data} onChangeText={setData} />
-
-      <Text style={styles.label}>Tipologia Esame</Text>
-      <TextInput style={styles.input} placeholder="Es: Scritto, Orale, Progetto" value={tipologia} onChangeText={setTipologia} />
-
-      <Text style={styles.label}>Note personali o promemoria</Text>
-      <TextInput style={[styles.input, { height: 60 }]} placeholder="Es: Portare il PC..." multiline value={note} onChangeText={setNote} />
-
-      <TouchableOpacity 
-        style={[styles.btnSalva, corsiDisponibili.length === 0 && styles.btnDisattivato]} 
-        onPress={handleSalvaEsame}
-        disabled={corsiDisponibili.length === 0}
+      style={{ flex: 1, backgroundColor: '#fff' }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // AGGIUNTA FONDAMENTALE: Calcola lo spazio della barra di navigazione in alto
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} 
+    >
+      <ScrollView 
+        style={styles.container} 
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 120 }}
       >
-        <Text style={styles.btnText}>{esameDaModificare ? "Salva Modifiche" : "Salva Esame"}</Text>
-      </TouchableOpacity>
-    </ScrollView>
-    
-    </TouchableWithoutFeedback>
-  </KeyboardAvoidingView> 
+        <Text style={styles.label}>Titolo Esame / Scadenza *</Text>
+        <TextInput style={styles.input} placeholder="Es: Presentazione Script Python" placeholderTextColor="#64748B" value={titolo} onChangeText={setTitolo} />
+        
+        <Text style={styles.label}>Corso di appartenenza *</Text>
+        {corsiDisponibili.length === 0 ? (
+          <Text style={styles.errorText}>Nessun corso trovato nel database locale. Crea prima un corso nella sezione Carriera!</Text>
+        ) : (
+          <View style={styles.listaCorsiGuscio}>
+            {corsiDisponibili.map((corso) => {
+              const IsSelezionato = corsoSelezionatoId === corso.id;
+              return (
+                <TouchableOpacity
+                  key={corso.id}
+                  style={[
+                    styles.opzioneCorsoCard,
+                    IsSelezionato && styles.opzioneCorsoSelezionata
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => setCorsoSelezionatoId(corso.id)}
+                >
+                  <View style={[styles.cerchioCheck, IsSelezionato && styles.cerchioCheckAttivo]}>
+                    {IsSelezionato && <View style={styles.pallinoInterno} />}
+                  </View>
+                  <Text style={[styles.testoCorsoOpzione, IsSelezionato && styles.testoCorsoSelezionato]}>
+                    {corso.nome}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        <Text style={styles.label}>Data dell'Appello (YYYY-MM-DD)</Text>
+        <TextInput style={styles.input} placeholder="Es: 2026-06-18" placeholderTextColor="#64748B" value={data} onChangeText={setData} />
+
+        <Text style={styles.label}>Tipologia Esame</Text>
+        <TextInput style={styles.input} placeholder="Es: Scritto, Orale, Progetto" placeholderTextColor="#64748B" value={tipologia} onChangeText={setTipologia} />
+
+        <Text style={styles.label}>Note personali o promemoria</Text>
+        <TextInput style={[styles.input, { height: 60 }]} placeholder="Es: Portare il PC..." multiline value={note} onChangeText={setNote} />
+
+        <TouchableOpacity 
+          style={[styles.btnSalva, corsiDisponibili.length === 0 && styles.btnDisattivato]} 
+          onPress={handleSalvaEsame}
+          disabled={corsiDisponibili.length === 0}
+        >
+          <Text style={styles.btnText}>{esameDaModificare ? "Salva Modifiche" : "Salva Esame"}</Text>
+        </TouchableOpacity>
+        
+      </ScrollView>
+    </KeyboardAvoidingView> 
   );
 }
 

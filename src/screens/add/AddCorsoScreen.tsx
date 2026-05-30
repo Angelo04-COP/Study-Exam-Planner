@@ -1,6 +1,6 @@
 // src/screens/add/AddCorsoScreen.tsx
 import React, { useEffect, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 import { aggiornaCorso, salvaNuovoCorso } from '../../constants/storage';
 
 export default function NuovoCorsoScreen({ route, navigation }: { route: any, navigation: any }) {
@@ -134,48 +134,51 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
 
   return (
     <KeyboardAvoidingView
-    style={{ flex: 1 }} 
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-  >
-    {/* Questo permette di chiudere la tastiera cliccando fuori dai campi */}
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      style={{ flex: 1, backgroundColor: '#fff' }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // AGGIUNTA FONDAMENTALE: Calcola lo spazio della barra di navigazione in alto
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} 
+    >
+      <ScrollView 
+        style={styles.container} 
+        // Permette di cliccare fuori per chiudere la tastiera (senza bloccare il Web!)
+        keyboardShouldPersistTaps="handled" 
+        // Aggiunge spazio extra in fondo per non far coprire il pulsante "Salva" dalla tastiera
+        contentContainerStyle={{ paddingBottom: 120}} 
+      >
+        <Text style={styles.label}>Nome del Corso *</Text>
+        <TextInput style={styles.input} placeholder="Es: Computer Vision" placeholderTextColor="#64748B" value={nome} onChangeText={setNome} />
 
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.label}>Nome del Corso *</Text>
-      <TextInput style={styles.input} placeholder="Es: Computer Vision" value={nome} onChangeText={setNome} />
+        <Text style={styles.label}>Docente</Text>
+        <TextInput style={styles.input} placeholder="Nome del professore" placeholderTextColor="#64748B" value={docente} onChangeText={setDocente} />
 
-      <Text style={styles.label}>Docente</Text>
-      <TextInput style={styles.input} placeholder="Nome del professore" value={docente} onChangeText={setDocente} />
+        <Text style={styles.label}>Numero di CFU</Text>
+        <TextInput style={styles.input} placeholder="Es: 9" placeholderTextColor="#64748B" keyboardType="numeric" value={cfu} onChangeText={setCfu} />
 
-      <Text style={styles.label}>Numero di CFU</Text>
-      <TextInput style={styles.input} placeholder="Es: 9" keyboardType="numeric" value={cfu} onChangeText={setCfu} />
+        <Text style={styles.label}>Voto Desiderato (Esame)</Text>
+        <TextInput style={styles.input} placeholder="Es: 28" placeholderTextColor="#64748B" keyboardType="numeric" value={votoDesiderato} onChangeText={setVotoDesiderato} />
 
-      <Text style={styles.label}>Voto Desiderato (Esame)</Text>
-      <TextInput style={styles.input} placeholder="Es: 28" keyboardType="numeric" value={votoDesiderato} onChangeText={setVotoDesiderato} />
+        <Text style={styles.label}>Semestre</Text>
+        <TextInput style={styles.input} placeholder="Es: Primo Semestre, Secondo Semestre" placeholderTextColor="#64748B" value={semestre} onChangeText={setSemestre} />
 
-      <Text style={styles.label}>Semestre</Text>
-      <TextInput style={styles.input} placeholder="Es: Primo Semestre, Secondo Semestre" value={semestre} onChangeText={setSemestre} />
+        <Text style={styles.label}>Anno Accademico</Text>
+        <TextInput style={styles.input} placeholder="Es: 2025/2026" placeholderTextColor="#64748B" value={annoAccademico} onChangeText={setAnnoAccademico} />
 
-      <Text style={styles.label}>Anno Accademico</Text>
-      <TextInput style={styles.input} placeholder="Es: 2025/2026" value={annoAccademico} onChangeText={setAnnoAccademico} />
+        <Text style={styles.label}>Data Inizio Corso (YYYY-MM-DD)</Text>
+        <TextInput style={styles.input} placeholder="Es: 2026-03-01" placeholderTextColor="#64748B" value={dataInizio} onChangeText={setDataInizio} />
 
-      <Text style={styles.label}>Data Inizio Corso (YYYY-MM-DD)</Text>
-      <TextInput style={styles.input} placeholder="Es: 2026-03-01" value={dataInizio} onChangeText={setDataInizio} />
+        <Text style={styles.label}>Data Fine Corso (YYYY-MM-DD)</Text>
+        <TextInput style={styles.input} placeholder="Es: 2026-06-15" placeholderTextColor="#64748B"value={dataFine} onChangeText={setDataFine} />
 
-      <Text style={styles.label}>Data Fine Corso (YYYY-MM-DD)</Text>
-      <TextInput style={styles.input} placeholder="Es: 2026-06-15" value={dataFine} onChangeText={setDataFine} />
+        <Text style={styles.label}>Descrizione del corso</Text>
+        <TextInput style={[styles.input, styles.textArea]} placeholder="Cosa si studia..." placeholderTextColor="#64748B" multiline value={descrizione} onChangeText={setDescrizione} />
 
-      <Text style={styles.label}>Descrizione del corso</Text>
-      <TextInput style={[styles.input, styles.textArea]} placeholder="Cosa si studia..." multiline value={descrizione} onChangeText={setDescrizione} />
-
-      <TouchableOpacity style={styles.btnSalva} onPress={handleSalvaCorso}>
-        <Text style={styles.btnText}>{corsoDaModificare ? "Salva Modifiche" : "Salva Corso"}</Text>
-      </TouchableOpacity>
-    </ScrollView>
-    
-    </TouchableWithoutFeedback>
-  </KeyboardAvoidingView>
-
+        <TouchableOpacity style={styles.btnSalva} onPress={handleSalvaCorso}>
+          <Text style={styles.btnText}>{corsoDaModificare ? "Salva Modifiche" : "Salva Corso"}</Text>
+        </TouchableOpacity>
+        
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
