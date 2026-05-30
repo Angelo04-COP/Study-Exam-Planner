@@ -108,7 +108,7 @@ export default function NuovoCorsoScreen({ route, navigation }: { route: any, na
       
       stato: statoDinamico, 
       
-      voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : 18,
+      voto_desiderato: votoDesiderato ? parseInt(votoDesiderato, 10) : null,
       voto_ottenuto: corsoDaModificare ? corsoDaModificare.voto_ottenuto : null, 
       data_inizio: dataInizio.trim(),
       data_fine: dataFine.trim(),

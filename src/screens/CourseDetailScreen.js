@@ -48,7 +48,7 @@ export default function CourseDetailScreen({ route, navigation }) {
           <Ionicons name={isExam ? "calendar-outline" : "ribbon-outline"} size={20} color="#177AD5" />
           <View style={styles.textContainer}>
             <Text style={styles.label}>{isExam ? "Data dell'Appello" : 'Crediti Formativi'}</Text>
-            <Text style={styles.value}>{courseData.cfu ? `${courseData.cfu} CFU` : (courseData.data || 'Nessuna data')}</Text>
+            <Text style={styles.value}>{courseData.cfu ? `${courseData.cfu} CFU` : (courseData.data || 'Non Specificato')}</Text>
           </View>
         </View>
 
