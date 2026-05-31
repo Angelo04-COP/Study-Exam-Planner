@@ -1,4 +1,4 @@
-// src/screens/aggiungi/AddSceltaScreen.tsx
+// src/screens/aggiungi/AddTaskScreen.tsx
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {Alert, StyleSheet, View } from 'react-native';

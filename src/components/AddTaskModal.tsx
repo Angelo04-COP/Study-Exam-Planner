@@ -156,7 +156,7 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
             title,
             desc,
             course: selectedCourse,
-            date: type === 'attivita' ? activityDate.trim() : (durationUnit === 'giorni' ? startDate : date),
+            date: type === 'attivita' || (type === 'sessione' && durationUnit === 'ore') ? activityDate.trim() : startDate,
             //le sessioni usano un valore neutro di default per la priorità
             priority: type === 'sessione' ? 'Media' : priority,
             //si passa il valore calcolato di sessionType se il macro-tipo è 'sessione'
@@ -250,17 +250,19 @@ const AddTaskModal = ({isVisible, onClose, onSave, date, courses, taskToEdit}: A
                 {/*Input per la descrizione*/}
                 <TextInput placeholder="Descrizione breve" placeholderTextColor = "#7c7c80" style={styles.input} onChangeText = {setDesc} value={desc} />
 
-                {type === 'attivita' && (
+                {((type === 'attivita') || (type === 'sessione' && durationUnit === 'ore')) && (
                     <View style={{ marginBottom: 10 }}>
-                    <Text style={styles.label}>DATA SVOLGIMENTO ATTIVITÀ (AAAA-MM-GG) *</Text>
-                    <TextInput 
-                        placeholder="Es: 2026-05-29" 
-                        placeholderTextColor="#7c7c80" 
-                        style={styles.input} 
-                        onChangeText={setActivityDate} 
-                        value={activityDate} 
-                    />
-                </View>
+                        <Text style={styles.label}>
+                            {type === 'attivita' ? "DATA SVOLGIMENTO ATTIVITÀ (AAAA-MM-GG) *" : "DATA DELLA SESSIONE (AAAA-MM-GG) *"}
+                        </Text>
+                        <TextInput 
+                            placeholder="Es: 2026-05-31" 
+                            placeholderTextColor="#7c7c80" 
+                            style={styles.input} 
+                            onChangeText={setActivityDate} 
+                            value={activityDate} 
+                        />
+                    </View>
                 )}
 
                 {/* Selettore dell'unità di durata per le sessioni, mostrato solo se type === 'sessione' */}
