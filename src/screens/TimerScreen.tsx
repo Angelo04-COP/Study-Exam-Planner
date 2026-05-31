@@ -109,17 +109,26 @@ export default function TimerScreen() {
       // Filtriamo le attività che appartengono alla sessione selezionata
       const filtered = tutteAttivita.filter(a => a.session_id === selectedSession.id);
       setAvailableActivities(filtered);
-      setSelectedActivity(null);
+    }
+  }, [selectedSession?.id, tutteAttivita]);
 
-      let duration = 3600; // Default di sicurezza (60 minuti)
 
-      if (selectedSession.estimatedTime && selectedSession.estimatedTime > 0) {
+  const handleSessionSelect = (session: Sessione) => {
+    // Blocco di sicurezza: se clicchi la sessione che è già attiva, ignora il click
+    if (selectedSession?.id === session.id) return;
+
+    setSelectedSession(session);
+    setSelectedActivity(null);
+
+    let duration = 3600; // Default di sicurezza (60 minuti)
+
+      if (session.estimatedTime && session.estimatedTime > 0) {
         // Se per caso c'è un tempo pre-salvato in minuti, usa quello
-        duration = selectedSession.estimatedTime * 60;
-      } else if (selectedSession.startDate && selectedSession.endDate) {
+        duration = session.estimatedTime * 60;
+      } else if (session.startDate && session.endDate) {
         // Altrimenti, calcola i secondi esatti di differenza tra inizio e fine
-        const start = new Date(selectedSession.startDate).getTime();
-        const end = new Date(selectedSession.endDate).getTime();
+        const start = new Date(session.startDate).getTime();
+        const end = new Date(session.endDate).getTime();
         
         if (!isNaN(start) && !isNaN(end) && end > start) {
           duration = Math.floor((end - start) / 1000); 
@@ -131,7 +140,6 @@ export default function TimerScreen() {
       setSecondsAtLastSwitch(duration);
       setIsRunning(false);
     }
-  }, [selectedSession, tutteAttivita]);
 
   // --- 3. MOTORE DEL TIMER ---
   useEffect(() => {
@@ -232,7 +240,7 @@ export default function TimerScreen() {
               {sessioniDisponibili.map(s => (
                 <TouchableOpacity 
                   key={s.id} 
-                  onPress={() => setSelectedSession(s)}
+                  onPress={() => handleSessionSelect(s)}
                   style={[styles.chip, selectedSession?.id === s.id && styles.chipActive]}
                 >
                   <Text style={[styles.chipText, selectedSession?.id === s.id && {color: '#fff'}]}>{s.title}</Text>
