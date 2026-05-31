@@ -4,9 +4,9 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 
 // Funzioni Storage
-import { getAttivita, getCorsi, getEsami } from '../constants/storage';
-//Dati fittizi per timer
-import { mockTempiStudio } from '../constants/mockData';
+// Funzioni Storage
+import { getAttivita, getCorsi, getEsami, getStoricoTimer } from '../constants/storage';
+
 
 export default function DashboardScreen() {
   const isFocused = useIsFocused(); 
@@ -15,6 +15,7 @@ export default function DashboardScreen() {
   const [corsi, setCorsi] = useState([]);
   const [esami, setEsami] = useState([]);
   const [attivita, setAttivita] = useState([]);
+  const [storicoTimer, setStoricoTimer] = useState([]);
   const [isLoading, setIsLoading] = useState(true); 
 
   useEffect(() => {
@@ -22,12 +23,13 @@ export default function DashboardScreen() {
       if (isFocused) {
         setIsLoading(true);
         try {
-          const [datiCorsi, datiEsami, datiAttivita] = await Promise.all([
-            getCorsi(), getEsami(), getAttivita()
+          const [datiCorsi, datiEsami, datiAttivita, datiTimer] = await Promise.all([
+            getCorsi(), getEsami(), getAttivita(), getStoricoTimer()
           ]);
           setCorsi(datiCorsi || []);
           setEsami(datiEsami || []);
           setAttivita(datiAttivita || []);
+          setStoricoTimer(datiTimer || []);
         } catch (error) {
           console.error("Errore nel caricamento dei dati del cruscotto:", error);
         } finally {
@@ -133,11 +135,11 @@ export default function DashboardScreen() {
     }
   });
 
-  mockTempiStudio.forEach(logTimer => {
-    if (logTimer.data && logTimer.ore_studiate) {
-      const dataLog = new Date(logTimer.data);
+  storicoTimer.forEach(logTimer => {
+    if (logTimer.data_registrazione && logTimer.minuti_registrati) {
+      const dataLog = new Date(logTimer.data_registrazione);
       const giornoIndice = (dataLog.getDay() + 6) % 7;
-      oreEffettive[giornoIndice] += logTimer.ore_studiate;
+      oreEffettive[giornoIndice] += (logTimer.minuti_registrati / 60); 
     }
   });
 
